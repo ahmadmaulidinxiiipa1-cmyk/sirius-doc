@@ -73,62 +73,28 @@ async function fetchUserDocuments(userId) {
 }
 
 // ==========================================
-// 3. FUNGSI MENYIMPAN DOKUMEN (Versi Pendeteksi)
+// 3. FUNGSI MENGHAPUS DOKUMEN (Versi Pendeteksi)
 // ==========================================
-async function saveDocument() {
-    saveBtn.innerText = "Menyimpan...";
-    saveBtn.disabled = true;
-
-    const title = titleInput.value.trim();
-    const content = editorCanvas.innerHTML; 
+async function deleteDocument(docId, docTitle) {
+    const confirmDelete = confirm(`Apakah Anda yakin ingin menghapus dokumen "${docTitle}"?`);
     
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const userId = session.user.id;
+    if (confirmDelete) {
+        // Tambahkan .select() di akhir agar Supabase melaporkan apa yang benar-benar terhapus
+        const { data, error } = await supabaseClient
+            .from('documents')
+            .delete()
+            .eq('id', docId)
+            .select();
 
-    try {
-        if (currentDocId) {
-            // PROSES UPDATE DOKUMEN LAMA
-            const { data, error } = await supabaseClient
-                .from('documents')
-                .update({ title: title, content: content, updated_at: new Date() })
-                .eq('id', currentDocId)
-                .select(); // Paksa Supabase melapor
-            
-            if (error) throw error;
-            if (!data || data.length === 0) throw new Error("Diblokir Satpam saat Update!");
-            
+        if (error) {
+            alert("❌ Gagal dari Supabase: " + error.message);
+        } else if (data.length === 0) {
+            alert("🔒 Dokumen gagal dihapus! Sepertinya Satpam Supabase (RLS) memblokirnya secara diam-diam.");
         } else {
-            // PROSES BUAT DOKUMEN BARU
-            const { data, error } = await supabaseClient
-                .from('documents')
-                .insert([{ title: title, content: content, user_id: userId }])
-                .select(); // Paksa Supabase melapor
-            
-            if (error) {
-                alert("❌ Gagal Simpan (Error Supabase): " + error.message);
-                throw error;
-            }
-            if (!data || data.length === 0) {
-                alert("🔒 Gagal Simpan! Diblokir Satpam (RLS) secara diam-diam!");
-                throw new Error("Diblokir Satpam (Insert)");
-            }
-            
-            currentDocId = data[0].id;
-            // Jika berhasil masuk, munculkan peringatan ini:
-            alert("✅ BERHASIL! Dokumen resmi masuk ke Supabase!"); 
-            
-            try { window.history.replaceState({}, '', `editor.html?id=${currentDocId}`); } catch (e) {}
+            alert("✅ Berhasil dihapus dari Database!");
+            // Gunakan trik ini agar browser tidak membaca cache lama
+            window.location.href = window.location.href.split('?')[0] + '?refresh=' + new Date().getTime();
         }
-        
-        saveBtn.innerText = "Tersimpan ✓";
-        setTimeout(() => { saveBtn.innerText = "Simpan"; }, 3000);
-        
-    } catch (error) {
-        console.error("Error Detail:", error);
-        alert("🚨 Sistem Gagal: " + error.message);
-        saveBtn.innerText = "Simpan";
-    } finally {
-        saveBtn.disabled = false;
     }
 }
 
