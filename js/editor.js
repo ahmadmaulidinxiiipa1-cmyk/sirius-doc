@@ -142,3 +142,37 @@ function formatText(command) {
 
 // Panggil fungsi inisialisasi untuk menghidupkan semuanya
 initEditor();
+// ==========================================
+// 6. FITUR EKSPOR KE PDF
+// ==========================================
+const exportPdfBtn = document.getElementById('export-pdf-btn');
+
+exportPdfBtn.addEventListener('click', () => {
+    // Ubah teks tombol saat sedang memproses
+    const originalText = exportPdfBtn.innerText;
+    exportPdfBtn.innerText = "Mencetak...";
+    exportPdfBtn.disabled = true;
+
+    // Ambil elemen kertas yang ingin dijadikan PDF
+    const element = document.getElementById('editor-canvas');
+    
+    // Ambil judul dari input untuk dijadikan nama file PDF
+    let fileName = titleInput.value.trim();
+    if (!fileName) fileName = "Dokumen_Sirius";
+
+    // Pengaturan bentuk PDF (margin, ukuran kertas A4, kualitas)
+    const opt = {
+        margin:       1,
+        filename:     `${fileName}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 }, // Agar teks di PDF tidak pecah/blur
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Jalankan perintah dari library html2pdf
+    html2pdf().set(opt).from(element).save().then(() => {
+        // Kembalikan tombol seperti semula setelah selesai diunduh
+        exportPdfBtn.innerText = originalText;
+        exportPdfBtn.disabled = false;
+    });
+});

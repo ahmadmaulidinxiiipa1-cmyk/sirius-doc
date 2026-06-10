@@ -3,46 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dokumen Tanpa Judul - Sirius Doc</title>
+    <title>Editor - Sirius Doc</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/editor.css">
 </head>
-<body>
-    <!-- Navbar Atas -->
-    <header class="editor-navbar">
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <a href="dashboard.html" style="text-decoration: none; font-size: 20px;">⬅️</a>
+<body style="background-color: #f8fafc;">
+
+    <nav class="editor-navbar" style="background: white; display: flex; justify-content: space-between; padding: 15px 30px; border-bottom: 1px solid #e2e8f0; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <button onclick="window.location.href='dashboard.html'" class="btn" style="background: transparent; border: 1px solid #cbd5e1; cursor: pointer;">⬅️ Kembali</button>
             <div class="document-title">
-                <input type="text" value="Dokumen Tanpa Judul">
+                <input type="text" value="Dokumen Tanpa Judul" style="font-size: 18px; font-weight: 600; border: none; outline: none; background: transparent; width: 300px;">
             </div>
         </div>
-        <div>
-            <button class="btn btn-primary" style="padding: 8px 16px;">Simpan</button>
+        <div style="display: flex; gap: 10px;">
+            <button id="export-pdf-btn" class="btn" style="background: #10b981; color: white; border: none; cursor: pointer;">⬇️ Download PDF</button>
+            <button class="btn btn-primary" style="border: none;">Simpan</button>
         </div>
-    </header>
+    </nav>
 
-    <div class="editor-main">
-        <!-- Sidebar Kiri -->
-        <aside class="sidebar">
-            <button class="tool-btn" title="Teks Tebal" onclick="formatText('bold')"><b>B</b></button>
-            <button class="tool-btn" title="Teks Miring" onclick="formatText('italic')"><i>I</i></button>
-            <button class="tool-btn" title="Garis Bawah" onclick="formatText('underline')"><u>U</u></button>
-            <div style="width: 30px; height: 1px; background: #e2e8f0; margin: 10px 0;"></div>
-            <button class="tool-btn" title="Gambar">🖼️</button>
-            <button class="tool-btn" title="Tabel">📊</button>
-        </aside>
-
-        <!-- Area Kertas -->
-        <main class="canvas-wrapper">
-            <div class="document-canvas" contenteditable="true" id="editor-canvas">
-                <h1>Mulai Menulis...</h1>
-                <p>Ketik ide hebatmu di sini.</p>
-            </div>
-        </main>
+    <div style="max-width: 800px; margin: 20px auto 0; background: white; padding: 10px 20px; border-radius: 8px 8px 0 0; border: 1px solid #e2e8f0; border-bottom: none; display: flex; gap: 10px;">
+        <button onclick="formatText('bold')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: bold;">B</button>
+        <button onclick="formatText('italic')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px; font-style: italic;">I</button>
+        <button onclick="formatText('underline')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px; text-decoration: underline;">U</button>
+        <div style="width: 1px; background: #e2e8f0; margin: 0 5px;"></div>
+        <button onclick="formatText('insertUnorderedList')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px;">• Bullet</button>
+        <button onclick="formatText('insertOrderedList')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px;">1. Angka</button>
     </div>
 
-    <!-- Menyambungkan ke logika JavaScript -->
+    <main style="padding: 0 20px 40px;">
+        <div id="editor-canvas" contenteditable="true" style="max-width: 800px; min-height: 800px; margin: 0 auto; background: white; padding: 50px; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); outline: none; line-height: 1.6; font-size: 16px;"></div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
     <script src="js/editor.js"></script>
 </body>
 </html>
