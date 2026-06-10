@@ -176,3 +176,32 @@ exportPdfBtn.addEventListener('click', () => {
         exportPdfBtn.disabled = false;
     });
 });
+// ==========================================
+// 7. FITUR EKSPOR KE WORD (.DOC)
+// ==========================================
+const exportWordBtn = document.getElementById('export-word-btn');
+
+exportWordBtn.addEventListener('click', () => {
+    // Ambil isi HTML dari kanvas
+    const content = document.getElementById('editor-canvas').innerHTML;
+    
+    // Ambil judul untuk nama file
+    let fileName = titleInput.value.trim();
+    if (!fileName) fileName = "Dokumen_Sirius";
+
+    // Bungkus isi kanvas dengan kode standar Microsoft Word
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+    const footer = "</body></html>";
+    const sourceHTML = header + content + footer;
+
+    // Ubah teks menjadi format file (Blob) yang bisa diunduh
+    const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+    const fileDownload = document.createElement("a");
+    
+    // Proses unduh gaib di belakang layar
+    document.body.appendChild(fileDownload);
+    fileDownload.href = source;
+    fileDownload.download = fileName + '.doc';
+    fileDownload.click();
+    document.body.removeChild(fileDownload);
+});
