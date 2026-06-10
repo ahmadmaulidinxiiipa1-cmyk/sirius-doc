@@ -106,26 +106,12 @@ authForm.addEventListener('submit', async (e) => {
             authForm.reset();
         }
         
-    } } catch (error) {
+    } catch (error) {
         // --- D. PENANGANAN ERROR ---
-        
-        let pesanError = error.message; // Default pesan dari Supabase
-        
-        // Terjemahkan pesan "Invalid login credentials" menjadi bahasa Indonesia
-        if (pesanError === "Invalid login credentials") {
-            pesanError = "Email atau kata sandi Anda salah. Silakan coba lagi.";
-        }
-        
-        // Kamu juga bisa menambahkan pesan lain jika mau
-        if (pesanError === "Email not confirmed") {
-            pesanError = "Email belum diverifikasi. Silakan cek kotak masuk email Anda.";
-        }
-
-        alert("Ups, ada masalah: " + pesanError); 
+        // Akan menangkap error dari Supabase (misal: password salah, email sudah terdaftar)
+        alert("Ups, ada masalah: " + error.message); 
         
     } finally {
-        // ... kode lainnya tetap sama
-    }
         // --- E. KEMBALIKAN TOMBOL KE KEADAAN SEMULA ---
         // Blok ini PASTI dieksekusi di akhir, baik prosesnya berhasil maupun gagal
         authBtn.innerText = originalBtnText;
