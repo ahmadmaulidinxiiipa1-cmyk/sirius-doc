@@ -1,0 +1,87 @@
+/* css/editor.css */
+body {
+    background-color: #f1f5f9;
+    height: 100vh;
+    overflow: hidden; /* Mencegah layar bergeser, hanya kertas yang bisa di-scroll */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navbar Editor */
+.editor-navbar {
+    background: #ffffff;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+    z-index: 10;
+}
+
+.document-title input {
+    border: none;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+.document-title input:focus {
+    outline: 1px solid #4f46e5;
+    background: #f8fafc;
+}
+
+/* Layout Bawah (Sidebar + Kertas) */
+.editor-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar Kiri (Alat-alat ala Canva) */
+.sidebar {
+    width: 60px;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+    gap: 15px;
+}
+
+.tool-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.tool-btn:hover {
+    background: #f1f5f9;
+    color: #4f46e5;
+}
+
+/* Area Kertas (Ala Word) */
+.canvas-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+}
+
+.document-canvas {
+    width: 210mm; /* Ukuran kertas A4 standar */
+    min-height: 297mm;
+    background: #ffffff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 96px; /* Margin kertas */
+    outline: none;
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autentikasi - Sirius Doc</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body class="auth-bg">
+    <div class="auth-wrapper">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h2>✨ Sirius Doc</h2>
+                <!-- Tambahkan ID di sini -->
+                <p id="auth-subtitle">Selamat datang! Silakan masuk ke akunmu.</p>
+            </div>
+            
+            <!-- Tambahkan ID di form -->
+            <form id="auth-form">
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="nama@email.com" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Kata Sandi</label>
+                    <input type="password" id="password" placeholder="Minimal 6 karakter" required>
+                </div>
+                
+                <!-- Tambahkan ID di tombol -->
+                <button type="submit" id="auth-btn" class="btn btn-primary btn-full">Masuk ke Ruang Kerja</button>
+            </form>
+            
+            <p class="auth-footer">
+                <!-- Tambahkan ID di teks dan link -->
+                <span id="auth-footer-text">Belum punya akun?</span> 
+                <a href="#" id="toggle-auth">Daftar di sini</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- 1. Memanggil Library Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. Jembatan Supabase (yang tadi kita buat) -->
+    <script src="js/supabase.js"></script>
+    <!-- 3. Logika Login & Daftar yang akan kita buat setelah ini -->
+    <script src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumen Tanpa Judul - Sirius Doc</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+    <!-- Navbar Atas -->
+    <header class="editor-navbar">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <a href="dashboard.html" style="text-decoration: none; font-size: 20px;">⬅️</a>
+            <div class="document-title">
+                <input type="text" value="Dokumen Tanpa Judul">
+            </div>
+        </div>
+        <div>
+            <button class="btn btn-primary" style="padding: 8px 16px;">Simpan</button>
+        </div>
+    </header>
+
+    <div class="editor-main">
+        <!-- Sidebar Kiri -->
+        <aside class="sidebar">
+            <button class="tool-btn" title="Teks Tebal" onclick="formatText('bold')"><b>B</b></button>
+            <button class="tool-btn" title="Teks Miring" onclick="formatText('italic')"><i>I</i></button>
+            <button class="tool-btn" title="Garis Bawah" onclick="formatText('underline')"><u>U</u></button>
+            <div style="width: 30px; height: 1px; background: #e2e8f0; margin: 10px 0;"></div>
+            <button class="tool-btn" title="Gambar">🖼️</button>
+            <button class="tool-btn" title="Tabel">📊</button>
+        </aside>
+
+        <!-- Area Kertas -->
+        <main class="canvas-wrapper">
+            <div class="document-canvas" contenteditable="true" id="editor-canvas">
+                <h1>Mulai Menulis...</h1>
+                <p>Ketik ide hebatmu di sini.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Menyambungkan ke logika JavaScript -->
+    <script src="js/editor.js"></script>
+</body>
+</html>

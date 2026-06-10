@@ -1,0 +1,92 @@
+/* Mereset jarak dasar bawaan browser */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Mengatur Font dan Warna Latar Belakang (Tema Terang/Putih) */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #ffffff;
+    color: #1e293b; /* Warna teks abu-abu sangat gelap */
+}
+
+/* --- Desain Navbar --- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 50px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 700;
+    color: #4f46e5; /* Ungu/Indigo Sirius */
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #64748b;
+    margin-left: 30px;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: #4f46e5;
+}
+
+.btn-login {
+    border: 2px solid #e2e8f0;
+    padding: 8px 20px;
+    border-radius: 8px;
+    color: #1e293b !important;
+}
+
+/* --- Desain Bagian Utama (Hero) --- */
+.hero {
+    text-align: center;
+    padding: 100px 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.hero h1 {
+    font-size: 48px;
+    line-height: 1.2;
+    margin-bottom: 20px;
+}
+
+.highlight {
+    color: #4f46e5; /* Ungu/Indigo Sirius */
+}
+
+.hero p {
+    font-size: 18px;
+    color: #64748b;
+    margin-bottom: 40px;
+    line-height: 1.6;
+}
+
+/* --- Desain Tombol --- */
+.btn {
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+.btn-primary {
+    background-color: #4f46e5;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #4338ca;
+}
