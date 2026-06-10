@@ -54,7 +54,7 @@ async function loadDocument(id) {
 }
 
 // ==========================================
-// 3. FUNGSI MENYIMPAN DOKUMEN (MANUAL & AUTO)
+// 3. FUNGSI MENYIMPAN DOKUMEN (Versi Super Ketat)
 // ==========================================
 async function saveDocument() {
     saveBtn.innerText = "Menyimpan...";
@@ -63,18 +63,24 @@ async function saveDocument() {
     const title = titleInput.value.trim();
     const content = editorCanvas.innerHTML; 
     
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const userId = session.user.id;
-
     try {
+        // CEK LOGIN DENGAN KETAT
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !session) {
+            throw new Error("Sesi login tidak valid. Silakan muat ulang halaman.");
+        }
+        const userId = session.user.id;
+
         if (currentDocId) {
             // UPDATE DOKUMEN
-            const { error } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('documents')
                 .update({ title: title, content: content, updated_at: new Date() })
-                .eq('id', currentDocId);
+                .eq('id', currentDocId)
+                .select(); 
             
-            if (error) throw error;
+            if (error) throw new Error("Gagal Update Supabase: " + error.message);
+            if (!data || data.length === 0) throw new Error("Update diblokir oleh Satpam Supabase (RLS)!");
             
         } else {
             // BUAT DOKUMEN BARU
@@ -83,11 +89,11 @@ async function saveDocument() {
                 .insert([{ title: title, content: content, user_id: userId }])
                 .select(); 
             
-            if (error) throw error;
+            if (error) throw new Error("Gagal Insert Supabase: " + error.message);
+            if (!data || data.length === 0) throw new Error("Insert diblokir! Pastikan RLS sudah di-Disable untuk tes ini.");
             
-            currentDocId = data[0].id;
+            currentDocId = data[0].id; // Sekarang aman karena kita sudah cek datanya tidak kosong
             
-            // Perbaikan URL agar tidak bentrok
             try {
                 window.history.replaceState({}, '', `editor.html?id=${currentDocId}`);
             } catch (urlError) {
@@ -95,13 +101,15 @@ async function saveDocument() {
             }
         }
         
+        // JIKA SAMPAI DI SINI, BERARTI 100% SUKSES MASUK DATABASE
         saveBtn.innerText = "Tersimpan ✓";
         setTimeout(() => { saveBtn.innerText = "Simpan"; }, 3000);
         
     } catch (error) {
-        console.error("Error Supabase:", error);
-        alert("Gagal menyimpan: " + error.message);
-        saveBtn.innerText = "Simpan";
+        // TAMPILKAN ERROR ASLINYA KE LAYAR
+        console.error("Error Detail:", error);
+        alert("🚨 Gagal: " + error.message);
+        saveBtn.innerText = "Gagal Simpan";
     } finally {
         saveBtn.disabled = false;
     }
