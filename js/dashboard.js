@@ -73,23 +73,27 @@ async function fetchUserDocuments(userId) {
 }
 
 // ==========================================
-// 3. FUNGSI MENGHAPUS DOKUMEN
+// 3. FUNGSI MENGHAPUS DOKUMEN (Versi Pendeteksi)
 // ==========================================
 async function deleteDocument(docId, docTitle) {
-    // Munculkan peringatan sebelum menghapus
-    const confirmDelete = confirm(`Apakah Anda yakin ingin menghapus dokumen "${docTitle}"? Data yang dihapus tidak bisa dikembalikan.`);
+    const confirmDelete = confirm(`Apakah Anda yakin ingin menghapus dokumen "${docTitle}"?`);
     
     if (confirmDelete) {
-        const { error } = await supabaseClient
+        // Tambahkan .select() di akhir agar Supabase melaporkan apa yang benar-benar terhapus
+        const { data, error } = await supabaseClient
             .from('documents')
             .delete()
-            .eq('id', docId);
+            .eq('id', docId)
+            .select();
 
         if (error) {
-            alert("Gagal menghapus dokumen: " + error.message);
+            alert("❌ Gagal dari Supabase: " + error.message);
+        } else if (data.length === 0) {
+            alert("🔒 Dokumen gagal dihapus! Sepertinya Satpam Supabase (RLS) memblokirnya secara diam-diam.");
         } else {
-            // FIX: Muat ulang halaman secara penuh agar sistem kembali segar!
-            window.location.reload();
+            alert("✅ Berhasil dihapus dari Database!");
+            // Gunakan trik ini agar browser tidak membaca cache lama
+            window.location.href = window.location.href.split('?')[0] + '?refresh=' + new Date().getTime();
         }
     }
 }
