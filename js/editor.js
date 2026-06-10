@@ -4,14 +4,13 @@ const editorCanvas = document.getElementById('editor-canvas');
 const titleInput = document.querySelector('.document-title input');
 const saveBtn = document.querySelector('.editor-navbar .btn-primary');
 
-let currentDocId = null; // Menyimpan ID dokumen yang sedang dibuka
-let autoSaveTimer; // Variabel untuk menghitung jeda mengetik
+let currentDocId = null; 
+let autoSaveTimer; 
 
 // ==========================================
-// 1. INISIALISASI (Dijalankan saat halaman dibuka)
+// 1. INISIALISASI
 // ==========================================
 async function initEditor() {
-    // A. Cek apakah ada pengguna yang login
     const { data: { session }, error } = await supabaseClient.auth.getSession();
     
     if (!session) {
@@ -20,14 +19,12 @@ async function initEditor() {
         return;
     }
 
-    // B. Cek apakah pengguna sedang membuat dokumen baru atau membuka yang lama
-    // (Mengecek URL, misalnya: editor.html?id=12345)
     const urlParams = new URLSearchParams(window.location.search);
     const docId = urlParams.get('id');
 
     if (docId) {
         currentDocId = docId;
-        await loadDocument(docId); // Buka dokumen lama
+        await loadDocument(docId); 
     }
 }
 
@@ -64,15 +61,14 @@ async function saveDocument() {
     saveBtn.disabled = true;
 
     const title = titleInput.value.trim();
-    const content = editorCanvas.innerHTML; // Mengambil seluruh tag HTML dari dalam kertas
+    const content = editorCanvas.innerHTML; 
     
-    // Ambil ID pengguna saat ini
     const { data: { session } } = await supabaseClient.auth.getSession();
     const userId = session.user.id;
 
     try {
         if (currentDocId) {
-            // ---> SKENARIO A: PERBARUI DOKUMEN LAMA (UPDATE)
+            // UPDATE DOKUMEN
             const { error } = await supabaseClient
                 .from('documents')
                 .update({ title: title, content: content, updated_at: new Date() })
@@ -81,27 +77,29 @@ async function saveDocument() {
             if (error) throw error;
             
         } else {
-            // ---> SKENARIO B: BUAT DOKUMEN BARU (INSERT)
+            // BUAT DOKUMEN BARU
             const { data, error } = await supabaseClient
                 .from('documents')
                 .insert([{ title: title, content: content, user_id: userId }])
-                .select(); // Minta Supabase mengembalikan data yang baru dibuat
+                .select(); 
             
             if (error) throw error;
             
-            // Simpan ID yang baru saja dibuat oleh Supabase
             currentDocId = data[0].id;
             
-            // Ubah URL browser agar sistem tahu dokumen ini bukan baru lagi
-            // (Mengubah editor.html menjadi editor.html?id=1234tanpa me-refresh halaman)
-            window.history.replaceState({}, '', `editor.html?id=${currentDocId}`);
+            // Perbaikan URL agar tidak bentrok
+            try {
+                window.history.replaceState({}, '', `editor.html?id=${currentDocId}`);
+            } catch (urlError) {
+                console.log("URL History ditahan (Mode Lokal)");
+            }
         }
         
-        // Kembalikan status tombol
         saveBtn.innerText = "Tersimpan ✓";
         setTimeout(() => { saveBtn.innerText = "Simpan"; }, 3000);
         
     } catch (error) {
+        console.error("Error Supabase:", error);
         alert("Gagal menyimpan: " + error.message);
         saveBtn.innerText = "Simpan";
     } finally {
@@ -114,94 +112,79 @@ async function saveDocument() {
 // ==========================================
 function handleTyping() {
     saveBtn.innerText = "Mengetik...";
-    
-    // Batalkan hitungan mundur sebelumnya (jika user masih mengetik)
     clearTimeout(autoSaveTimer);
     
-    // Mulai hitung mundur baru. Jika user diam 2 detik (2000ms), simpan otomatis!
     autoSaveTimer = setTimeout(() => {
         saveDocument();
     }, 2000);
 }
 
-// Pasang pendeteksi ketikan di kertas dan judul
 editorCanvas.addEventListener('input', handleTyping);
 titleInput.addEventListener('input', handleTyping);
-
-// Pasang pendeteksi klik untuk tombol Simpan manual
 saveBtn.addEventListener('click', saveDocument);
 
 // ==========================================
-// 5. ALAT FORMAT TEKS KERTAS (Bold, Italic, dll)
+// 5. ALAT FORMAT TEKS KERTAS
 // ==========================================
 function formatText(command) {
     document.execCommand(command, false, null);
-    editorCanvas.focus(); // Kembalikan kursor ke kertas setelah tombol ditekan
-    handleTyping(); // Panggil fungsi agar format baru ini ikut ter-AutoSave
+    editorCanvas.focus(); 
+    handleTyping(); 
 }
 
-// Panggil fungsi inisialisasi untuk menghidupkan semuanya
-initEditor();
 // ==========================================
-// 6. FITUR EKSPOR KE PDF
+// 6. FITUR EKSPOR PDF
 // ==========================================
 const exportPdfBtn = document.getElementById('export-pdf-btn');
+if(exportPdfBtn) {
+    exportPdfBtn.addEventListener('click', () => {
+        const originalText = exportPdfBtn.innerText;
+        exportPdfBtn.innerText = "Mencetak...";
+        exportPdfBtn.disabled = true;
 
-exportPdfBtn.addEventListener('click', () => {
-    // Ubah teks tombol saat sedang memproses
-    const originalText = exportPdfBtn.innerText;
-    exportPdfBtn.innerText = "Mencetak...";
-    exportPdfBtn.disabled = true;
+        const element = document.getElementById('editor-canvas');
+        let fileName = titleInput.value.trim();
+        if (!fileName) fileName = "Dokumen_Sirius";
 
-    // Ambil elemen kertas yang ingin dijadikan PDF
-    const element = document.getElementById('editor-canvas');
-    
-    // Ambil judul dari input untuk dijadikan nama file PDF
-    let fileName = titleInput.value.trim();
-    if (!fileName) fileName = "Dokumen_Sirius";
+        const opt = {
+            margin:       1,
+            filename:     `${fileName}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
 
-    // Pengaturan bentuk PDF (margin, ukuran kertas A4, kualitas)
-    const opt = {
-        margin:       1,
-        filename:     `${fileName}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 }, // Agar teks di PDF tidak pecah/blur
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    // Jalankan perintah dari library html2pdf
-    html2pdf().set(opt).from(element).save().then(() => {
-        // Kembalikan tombol seperti semula setelah selesai diunduh
-        exportPdfBtn.innerText = originalText;
-        exportPdfBtn.disabled = false;
+        html2pdf().set(opt).from(element).save().then(() => {
+            exportPdfBtn.innerText = originalText;
+            exportPdfBtn.disabled = false;
+        });
     });
-});
+}
+
 // ==========================================
-// 7. FITUR EKSPOR KE WORD (.DOC)
+// 7. FITUR EKSPOR WORD
 // ==========================================
 const exportWordBtn = document.getElementById('export-word-btn');
+if(exportWordBtn) {
+    exportWordBtn.addEventListener('click', () => {
+        const content = document.getElementById('editor-canvas').innerHTML;
+        let fileName = titleInput.value.trim();
+        if (!fileName) fileName = "Dokumen_Sirius";
 
-exportWordBtn.addEventListener('click', () => {
-    // Ambil isi HTML dari kanvas
-    const content = document.getElementById('editor-canvas').innerHTML;
-    
-    // Ambil judul untuk nama file
-    let fileName = titleInput.value.trim();
-    if (!fileName) fileName = "Dokumen_Sirius";
+        const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+        const footer = "</body></html>";
+        const sourceHTML = header + content + footer;
 
-    // Bungkus isi kanvas dengan kode standar Microsoft Word
-    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
-    const footer = "</body></html>";
-    const sourceHTML = header + content + footer;
+        const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+        const fileDownload = document.createElement("a");
+        
+        document.body.appendChild(fileDownload);
+        fileDownload.href = source;
+        fileDownload.download = fileName + '.doc';
+        fileDownload.click();
+        document.body.removeChild(fileDownload);
+    });
+}
 
-    // Ubah teks menjadi format file (Blob) yang bisa diunduh
-    const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-    const fileDownload = document.createElement("a");
-    
-    // Proses unduh gaib di belakang layar
-    document.body.appendChild(fileDownload);
-    fileDownload.href = source;
-    fileDownload.download = fileName + '.doc';
-    fileDownload.click();
-    document.body.removeChild(fileDownload);
-});
+// Jalankan editor
+initEditor();
