@@ -76,7 +76,7 @@ async function fetchUserDocuments(userId) {
 // 3. FUNGSI MENGHAPUS DOKUMEN
 // ==========================================
 async function deleteDocument(docId, docTitle) {
-    // Munculkan peringatan sebelum menghapus (agar tidak tidak sengaja terklik)
+    // Munculkan peringatan sebelum menghapus
     const confirmDelete = confirm(`Apakah Anda yakin ingin menghapus dokumen "${docTitle}"? Data yang dihapus tidak bisa dikembalikan.`);
     
     if (confirmDelete) {
@@ -88,9 +88,8 @@ async function deleteDocument(docId, docTitle) {
         if (error) {
             alert("Gagal menghapus dokumen: " + error.message);
         } else {
-            // Jika berhasil dihapus, segarkan ulang halaman dashboard
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            fetchUserDocuments(session.user.id);
+            // FIX: Muat ulang halaman secara penuh agar sistem kembali segar!
+            window.location.reload();
         }
     }
 }
