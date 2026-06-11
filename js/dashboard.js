@@ -3,7 +3,11 @@ const userEmailSpan = document.getElementById('user-email');
 const logoutBtn = document.getElementById('logout-btn');
 const dashboardBody = document.getElementById('dashboard-body');
 const createDocBtn = document.querySelector('.navbar .btn-primary');
-const documentContainer = document.querySelector('main div');
+// Kita ubah selektornya menggunakan ID agar lebih spesifik dan aman
+const documentContainer = document.getElementById('document-container');
+const searchInput = document.getElementById('search-input');
+
+let allDocuments = []; // Variabel untuk menyimpan semua data dokumen sementara
 
 // ==========================================
 // 1. INISIALISASI & CEK LOGIN
@@ -19,12 +23,11 @@ async function initDashboard() {
     dashboardBody.style.display = "block";
     userEmailSpan.innerText = session.user.email;
     
-    // Panggil fungsi untuk mengambil dokumen milik user ini
     await fetchUserDocuments(session.user.id);
 }
 
 // ==========================================
-// 2. AMBIL DATA DARI SUPABASE & TAMPILKAN
+// 2. AMBIL DATA DARI SUPABASE
 // ==========================================
 async function fetchUserDocuments(userId) {
     documentContainer.innerHTML = `<p style="text-align: center;">Memuat dokumen...</p>`;
@@ -45,13 +48,28 @@ async function fetchUserDocuments(userId) {
         return;
     }
 
-    // Bersihkan kontainer dan buat daftar baru
-    documentContainer.innerHTML = '';
+    // Simpan data ke variabel global agar bisa dicari tanpa memanggil database lagi
+    allDocuments = documents;
+    
+    // Tampilkan semua dokumen
+    renderDocuments(allDocuments);
+}
+
+// ==========================================
+// 3. FUNGSI MENAMPILKAN DOKUMEN KE LAYAR (BARU)
+// ==========================================
+function renderDocuments(docs) {
+    documentContainer.innerHTML = ''; // Bersihkan wadah
+
+    if (docs.length === 0) {
+        documentContainer.innerHTML = `<p style="text-align: center; color: #64748b; padding: 40px;">Pencarian tidak ditemukan.</p>`;
+        return;
+    }
+
     const listWrapper = document.createElement('div');
     listWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
 
-    documents.forEach(doc => {
-        // Format tanggal agar rapi
+    docs.forEach(doc => {
         const date = new Date(doc.updated_at).toLocaleDateString('id-ID', {
             day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'
         });
@@ -59,7 +77,6 @@ async function fetchUserDocuments(userId) {
         const docItem = document.createElement('div');
         docItem.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border: 1px solid #e2e8f0; border-radius: 8px; transition: all 0.2s; background: white;`;
         
-        // Efek Hover (Warna berubah saat disorot mouse)
         docItem.onmouseover = () => { docItem.style.borderColor = '#4f46e5'; docItem.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'; };
         docItem.onmouseout = () => { docItem.style.borderColor = '#e2e8f0'; docItem.style.boxShadow = 'none'; };
 
@@ -80,47 +97,93 @@ async function fetchUserDocuments(userId) {
 }
 
 // ==========================================
-// 3. FUNGSI MENGHAPUS DOKUMEN (UTUH & AMAN)
+// 4. FITUR PENCARIAN LANGSUNG (BARU)
 // ==========================================
+if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        const keyword = e.target.value.toLowerCase();
+        
+        // Filter dokumen yang judulnya mengandung kata kunci
+        const filteredDocs = allDocuments.filter(doc => {
+            const title = (doc.title || 'Tanpa Judul').toLowerCase();
+            return title.includes(keyword);
+        });
+
+        // Tampilkan hasil filter
+        renderDocuments(filteredDocs);
+    });
+}
+
+// ==========================================
+// 5. FUNGSI MENGHAPUS DOKUMEN (Versi Toast & Tanpa Refresh)
+// ==========================================
+
+// Fungsi Pembuat Notifikasi Toast
+function showToast(message, type = 'success') {
+    // Buat wadah toast jika belum ada
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    // Buat elemen toast
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerText = message;
+    container.appendChild(toast);
+
+    // Animasi masuk (kasih jeda 10ms agar CSS transisinya jalan)
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Hilangkan otomatis setelah 3 detik
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300); // Tunggu animasi keluar selesai baru hapus dari HTML
+    }, 3000);
+}
+
+// Fungsi Hapus yang Diperbarui
 async function deleteDocument(docId, docTitle) {
+    // Konfirmasi hapus tetap pakai bawaan dulu biar aman dari salah pencet
     const confirmDelete = confirm(`Apakah Anda yakin ingin menghapus dokumen "${docTitle}"?`);
     
     if (confirmDelete) {
         try {
-            // Perintah hapus dengan .select() agar Supabase wajib memberikan laporan
             const { data, error } = await supabaseClient
                 .from('documents')
                 .delete()
                 .eq('id', docId)
                 .select();
 
-            if (error) {
-                alert("❌ Gagal menghapus (Error Database): " + error.message);
-                return;
-            }
+            if (error) { showToast("❌ Gagal menghapus: " + error.message, "error"); return; }
+            if (!data || data.length === 0) { showToast("🔒 Gagal dihapus! RLS menolak.", "error"); return; }
 
-            if (!data || data.length === 0) {
-                alert("🔒 Gagal dihapus! Satpam Supabase (RLS) menolak akses Anda.");
-                return;
-            }
-
-            // Jika berhasil, beri tahu dan muat ulang halaman agar dokumen hilang dari layar
-            alert("✅ Dokumen berhasil dihapus!");
-            window.location.reload(); 
+            // Panggil notifikasi cantik
+            showToast("✅ Dokumen berhasil dihapus!", "success");
+            
+            // HAPUS DARI LAYAR TANPA REFRESH HALAMAN!
+            allDocuments = allDocuments.filter(doc => doc.id !== docId);
+            
+            // Render ulang sesuai apa yang sedang dicari di Search Bar
+            const searchBox = document.getElementById('search-input');
+            const keyword = searchBox ? searchBox.value.toLowerCase() : '';
+            const filteredDocs = allDocuments.filter(doc => (doc.title || 'Tanpa Judul').toLowerCase().includes(keyword));
+            
+            renderDocuments(filteredDocs);
             
         } catch (err) {
-            console.error("Error Detail:", err);
-            alert("🚨 Terjadi kesalahan sistem: " + err.message);
+            showToast("🚨 Terjadi kesalahan sistem: " + err.message, "error");
         }
     }
 }
 
 // ==========================================
-// 4. TOMBOL-TOMBOL UTAMA
+// 6. TOMBOL LAINNYA
 // ==========================================
-if (createDocBtn) {
-    createDocBtn.addEventListener('click', () => window.location.href = "editor.html");
-}
+if (createDocBtn) createDocBtn.addEventListener('click', () => window.location.href = "editor.html");
 
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
@@ -130,7 +193,5 @@ if (logoutBtn) {
     });
 }
 
-// ==========================================
-// JALANKAN SISTEM DASHBOARD
-// ==========================================
+// Jalankan sistem
 initDashboard();
