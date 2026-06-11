@@ -256,3 +256,28 @@ if (confirmShareBtn) {
 
 // Jalankan sistem
 initEditor();
+
+// ==========================================
+// 9. FUNGSI SALIN LINK DOKUMEN 🔗
+// ==========================================
+const copyLinkBtn = document.getElementById('copy-link-btn');
+
+if (copyLinkBtn) {
+    copyLinkBtn.addEventListener('click', () => {
+        // Cek apakah dokumen sudah disave dan punya ID
+        if (!currentDocId) {
+            showToast("Simpan dokumen dulu sebelum menyalin link!", "error");
+            return;
+        }
+        
+        // Merakit link dokumenmu
+        const docLink = window.location.origin + window.location.pathname + '?id=' + currentDocId;
+        
+        // Memerintahkan browser untuk meng-copy link
+        navigator.clipboard.writeText(docLink).then(() => {
+            showToast("🔗 Link berhasil disalin! Silakan kirim ke temanmu.", "success");
+        }).catch(() => {
+            showToast("🚨 Gagal menyalin link.", "error");
+        });
+    });
+}

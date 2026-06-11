@@ -20,6 +20,8 @@
             <button id="export-word-btn" class="btn" style="background: #2563eb; color: white; border: none; cursor: pointer;">📄 Download Word</button>
             <button id="export-pdf-btn" class="btn" style="background: #10b981; color: white; border: none; cursor: pointer;">⬇️ Download PDF</button>
             
+            <button id="copy-link-btn" class="btn" style="background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; cursor: pointer;">🔗 Salin Link</button>
+            
             <button id="share-btn" class="btn" style="background: #6366f1; color: white; border: none; cursor: pointer;">🤝 Bagikan</button>
             
             <button id="save-btn" class="btn btn-primary" style="border: none;">Simpan</button>
@@ -44,13 +46,14 @@
             <h3>Bagikan Dokumen</h3>
             <input type="email" id="share-email" placeholder="Email teman..." style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px;">
             <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
-                <button onclick="document.getElementById('share-modal').style.display='none'" class="btn">Batal</button>
-                <button id="confirm-share-btn" class="btn" style="background: #6366f1; color: white; border: none; cursor: pointer;">Bagikan</button>
+                <button onclick="document.getElementById('share-modal').style.display='none'" class="btn" style="background: white; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer; border-radius: 4px;">Batal</button>
+                <button id="confirm-share-btn" class="btn" style="background: #6366f1; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">Bagikan</button>
             </div>
         </div>
     </div>
 
     <div id="toast-container" class="toast-container"></div>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
