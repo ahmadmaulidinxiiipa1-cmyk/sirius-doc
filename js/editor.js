@@ -1,8 +1,9 @@
 // js/editor.js
+console.log("✅ Sistem Editor mulai berjalan...");
 
 const editorCanvas = document.getElementById('editor-canvas');
-const titleInput = document.querySelector('.document-title input');
-const saveBtn = document.querySelector('.editor-navbar .btn-primary');
+const titleInput = document.getElementById('title-input');
+const saveBtn = document.getElementById('save-btn');
 
 let currentDocId = null; 
 let autoSaveTimer; 
@@ -33,7 +34,6 @@ async function initEditor() {
 // ==========================================
 async function loadDocument(id) {
     saveBtn.innerText = "Memuat...";
-    
     const { data, error } = await supabaseClient
         .from('documents')
         .select('*')
@@ -54,7 +54,7 @@ async function loadDocument(id) {
 }
 
 // ==========================================
-// 3. FUNGSI MENYIMPAN DOKUMEN (Versi Super Ketat)
+// 3. FUNGSI MENYIMPAN DOKUMEN (ANTI CRASH)
 // ==========================================
 async function saveDocument() {
     saveBtn.innerText = "Menyimpan...";
@@ -64,51 +64,42 @@ async function saveDocument() {
     const content = editorCanvas.innerHTML; 
     
     try {
-        // CEK LOGIN DENGAN KETAT
         const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-        if (sessionError || !session) {
-            throw new Error("Sesi login tidak valid. Silakan muat ulang halaman.");
-        }
+        if (sessionError || !session) throw new Error("Sesi login terputus.");
         const userId = session.user.id;
 
         if (currentDocId) {
-            // UPDATE DOKUMEN
+            // UPDATE
             const { data, error } = await supabaseClient
                 .from('documents')
                 .update({ title: title, content: content, updated_at: new Date() })
                 .eq('id', currentDocId)
                 .select(); 
             
-            if (error) throw new Error("Gagal Update Supabase: " + error.message);
-            if (!data || data.length === 0) throw new Error("Update diblokir oleh Satpam Supabase (RLS)!");
-            
+            if (error) throw new Error(error.message);
+            if (!data || data.length === 0) throw new Error("Update diblokir oleh sistem keamanan!");
         } else {
-            // BUAT DOKUMEN BARU
+            // BUAT BARU
             const { data, error } = await supabaseClient
                 .from('documents')
                 .insert([{ title: title, content: content, user_id: userId }])
                 .select(); 
             
-            if (error) throw new Error("Gagal Insert Supabase: " + error.message);
-            if (!data || data.length === 0) throw new Error("Insert diblokir! Pastikan RLS sudah di-Disable untuk tes ini.");
+            if (error) throw new Error(error.message);
+            if (!data || data.length === 0) throw new Error("Gagal disimpan, diblokir oleh Satpam Supabase!");
             
-            currentDocId = data[0].id; // Sekarang aman karena kita sudah cek datanya tidak kosong
+            currentDocId = data[0].id;
+            try { window.history.replaceState({}, '', `editor.html?id=${currentDocId}`); } catch (e) {}
             
-            try {
-                window.history.replaceState({}, '', `editor.html?id=${currentDocId}`);
-            } catch (urlError) {
-                console.log("URL History ditahan (Mode Lokal)");
-            }
+            // ALERT SUKSES!
+            alert("✅ Yey! Dokumenmu BERHASIL masuk ke dalam brankas Supabase!");
         }
         
-        // JIKA SAMPAI DI SINI, BERARTI 100% SUKSES MASUK DATABASE
         saveBtn.innerText = "Tersimpan ✓";
         setTimeout(() => { saveBtn.innerText = "Simpan"; }, 3000);
         
     } catch (error) {
-        // TAMPILKAN ERROR ASLINYA KE LAYAR
-        console.error("Error Detail:", error);
-        alert("🚨 Gagal: " + error.message);
+        alert("🚨 GAGAL: " + error.message);
         saveBtn.innerText = "Gagal Simpan";
     } finally {
         saveBtn.disabled = false;
@@ -116,25 +107,24 @@ async function saveDocument() {
 }
 
 // ==========================================
-// 4. PEMICU AUTO-SAVE (Mendeteksi Ketikan)
+// 4. PEMICU AUTO-SAVE & TOMBOL
 // ==========================================
 function handleTyping() {
     saveBtn.innerText = "Mengetik...";
     clearTimeout(autoSaveTimer);
-    
     autoSaveTimer = setTimeout(() => {
         saveDocument();
     }, 2000);
 }
 
-editorCanvas.addEventListener('input', handleTyping);
-titleInput.addEventListener('input', handleTyping);
-saveBtn.addEventListener('click', saveDocument);
+if (editorCanvas) editorCanvas.addEventListener('input', handleTyping);
+if (titleInput) titleInput.addEventListener('input', handleTyping);
+if (saveBtn) saveBtn.addEventListener('click', saveDocument);
 
 // ==========================================
 // 5. ALAT FORMAT TEKS KERTAS
 // ==========================================
-function formatText(command) {
+window.formatText = function(command) {
     document.execCommand(command, false, null);
     editorCanvas.focus(); 
     handleTyping(); 
@@ -194,5 +184,5 @@ if(exportWordBtn) {
     });
 }
 
-// Jalankan editor
+// Jalankan sistem
 initEditor();

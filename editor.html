@@ -9,26 +9,20 @@
 </head>
 <body style="background-color: #f8fafc;">
 
-    <!-- Navbar Editor -->
     <nav class="editor-navbar" style="background: white; display: flex; justify-content: space-between; padding: 15px 30px; border-bottom: 1px solid #e2e8f0; align-items: center;">
         <div style="display: flex; align-items: center; gap: 15px;">
             <button onclick="window.location.href='dashboard.html'" class="btn" style="background: transparent; border: 1px solid #cbd5e1; cursor: pointer;">⬅️ Kembali</button>
             <div class="document-title">
-                <input type="text" value="Dokumen Tanpa Judul" style="font-size: 18px; font-weight: 600; border: none; outline: none; background: transparent; width: 300px;">
+                <input id="title-input" type="text" value="Dokumen Tanpa Judul" style="font-size: 18px; font-weight: 600; border: none; outline: none; background: transparent; width: 300px;">
             </div>
         </div>
         <div style="display: flex; gap: 10px;">
-            <!-- Tombol Download Word (Baru) -->
             <button id="export-word-btn" class="btn" style="background: #2563eb; color: white; border: none; cursor: pointer;">📄 Download Word</button>
-            
-            <!-- Tombol Download PDF -->
             <button id="export-pdf-btn" class="btn" style="background: #10b981; color: white; border: none; cursor: pointer;">⬇️ Download PDF</button>
-            
-            <button class="btn btn-primary" style="border: none;">Simpan</button>
+            <button id="save-btn" class="btn btn-primary" style="border: none;">Simpan</button>
         </div>
     </nav>
 
-    <!-- Toolbar Alat Ketik -->
     <div style="max-width: 800px; margin: 20px auto 0; background: white; padding: 10px 20px; border-radius: 8px 8px 0 0; border: 1px solid #e2e8f0; border-bottom: none; display: flex; gap: 10px;">
         <button onclick="formatText('bold')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: bold;">B</button>
         <button onclick="formatText('italic')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px; font-style: italic;">I</button>
@@ -38,14 +32,11 @@
         <button onclick="formatText('insertOrderedList')" style="padding: 5px 12px; cursor: pointer; background: white; border: 1px solid #cbd5e1; border-radius: 4px;">1. Angka</button>
     </div>
 
-    <!-- Kertas Editor -->
     <main style="padding: 0 20px 40px;">
         <div id="editor-canvas" contenteditable="true" style="max-width: 800px; min-height: 800px; margin: 0 auto; background: white; padding: 50px; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); outline: none; line-height: 1.6; font-size: 16px;"></div>
     </main>
 
-    <!-- 1. Panggil Library Pencetak PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- 2. Panggil Supabase & Logika Editor -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/editor.js"></script>
