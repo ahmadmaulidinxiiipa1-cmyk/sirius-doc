@@ -54,6 +54,38 @@ async function loadDocument(id) {
 }
 
 // ==========================================
+// FUNGSI NOTIFIKASI CANTIK (TOAST)
+// ==========================================
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    
+    // Jika wadah belum ada, buat otomatis
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    
+    // Buat kotak notifikasi
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerText = message;
+    
+    // Masukkan ke dalam wadah
+    container.appendChild(toast);
+    
+    // Efek animasi muncul (10ms)
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Hilangkan otomatis setelah 3 detik
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ==========================================
 // 3. FUNGSI MENYIMPAN DOKUMEN (ANTI CRASH)
 // ==========================================
 async function saveDocument() {
@@ -91,15 +123,16 @@ async function saveDocument() {
             currentDocId = data[0].id;
             try { window.history.replaceState({}, '', `editor.html?id=${currentDocId}`); } catch (e) {}
             
-            // ALERT SUKSES!
-            alert("✅ Yey! Dokumenmu BERHASIL masuk ke dalam brankas Supabase!");
+            // ALERT SUKSES DIGANTI JADI TOAST! ✅
+            showToast("✅ Dokumen berhasil tersimpan!", "success");
         }
         
         saveBtn.innerText = "Tersimpan ✓";
         setTimeout(() => { saveBtn.innerText = "Simpan"; }, 3000);
         
     } catch (error) {
-        alert("🚨 GAGAL: " + error.message);
+        // ALERT GAGAL DIGANTI JADI TOAST! 🚨
+        showToast("🚨 GAGAL: " + error.message, "error");
         saveBtn.innerText = "Gagal Simpan";
     } finally {
         saveBtn.disabled = false;
