@@ -7,6 +7,8 @@ const saveBtn = document.getElementById('save-btn');
 
 let currentDocId = null; 
 let autoSaveTimer; 
+let realtimeChannel = null; // Variabel global untuk saluran komunikasi
+let myUserId = null;        // Variabel global untuk menyimpan ID user aktif
 
 // ==========================================
 // 1. INISIALISASI & MULTIPLAYER TRIGGER
@@ -27,7 +29,7 @@ async function initEditor() {
         currentDocId = docId;
         await loadDocument(docId); 
         
-        // Panggil sistem kehadiran (Canva Mode) setelah dokumen dimuat
+        // Panggil sistem kehadiran & siaran (Canva Mode) setelah dokumen dimuat
         initMultiplayer(docId);
     }
 }
@@ -138,6 +140,21 @@ async function saveDocument() {
 // ==========================================
 function handleTyping() {
     saveBtn.innerText = "Mengetik...";
+    
+    // ✅ 1. SIARKAN KETIKAN SECARA REAL-TIME KEPADA TEMAN (CANVA MODE)
+    if (realtimeChannel && myUserId) {
+        realtimeChannel.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: {
+                user_id: myUserId,
+                title: titleInput.value,
+                content: editorCanvas.innerHTML
+            }
+        });
+    }
+
+    // 2. Timer untuk Autosave ke database (tetap berjalan di latar belakang)
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => saveDocument(), 2000);
 }
@@ -149,7 +166,7 @@ if (saveBtn) saveBtn.addEventListener('click', saveDocument);
 window.formatText = function(command) {
     document.execCommand(command, false, null);
     editorCanvas.focus(); 
-    handleTyping(); 
+    handleTyping(); // Picu siaran perubahan format teks
 }
 
 // ==========================================
@@ -221,26 +238,45 @@ if (copyLinkBtn) copyLinkBtn.addEventListener('click', () => {
 });
 
 // ==========================================
-// 7. FITUR MULTIPLAYER: INDIKATOR KEHADIRAN 🟢
+// 7. FITUR MULTIPLAYER: INDIKATOR KEHADIRAN & BROADCAST 🟢
 // ==========================================
 const collaboratorsContainer = document.getElementById('collaborators-container');
-let realtimeChannel = null;
 
 async function initMultiplayer(docId) {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) return;
+    
+    myUserId = session.user.id; // Menyimpan ID kita ke variabel global
     const myName = session.user.email.split('@')[0];
 
     // Buka saluran khusus dokumen ini
     realtimeChannel = supabaseClient.channel('document-' + docId);
 
-    // Dengarkan siapa yang masuk dan keluar
+    // [Presence] Dengarkan siapa yang masuk dan keluar halaman dokumen
     realtimeChannel.on('presence', { event: 'sync' }, () => {
         const newState = realtimeChannel.presenceState();
         renderCollaborators(newState, session.user.id);
     });
 
-    // Laporkan kehadiran kita ke database
+    // [Broadcast] ✅ JALUR TERIMA SIARAN: Dengarkan apa yang diketik teman
+    realtimeChannel.on('broadcast', { event: 'typing' }, (response) => {
+        const { user_id, title, content } = response.payload;
+        
+        // Hanya update jika siaran dikirim oleh orang lain
+        if (user_id !== session.user.id) {
+            
+            // TRICK PRO: Jangan update kolom jika kita sendiri sedang fokus mengetik di sana 
+            // Ini sangat krusial agar posisi kursor ketikan kita tidak melompat-lompat
+            if (document.activeElement !== titleInput && titleInput.value !== title) {
+                titleInput.value = title;
+            }
+            if (document.activeElement !== editorCanvas && editorCanvas.innerHTML !== content) {
+                editorCanvas.innerHTML = content;
+            }
+        }
+    });
+
+    // Daftarkan dan umumkan kehadiran kita ke saluran
     realtimeChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
             await realtimeChannel.track({
@@ -258,7 +294,7 @@ function renderCollaborators(presenceState, myUserId) {
 
     for (const id in presenceState) {
         const userPresence = presenceState[id][0];
-        if (userPresence.user_id === myUserId) continue; // Jangan tampilkan diri sendiri
+        if (userPresence.user_id === myUserId) continue; // Lewati deteksi diri sendiri
 
         const initial = userPresence.user_name.charAt(0).toUpperCase();
         const avatar = document.createElement('div');
@@ -269,7 +305,7 @@ function renderCollaborators(presenceState, myUserId) {
             font-weight: bold; font-size: 14px; border: 2px solid white; 
             margin-left: -10px; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;
         `;
-        avatar.title = userPresence.user_name + " sedang online"; 
+        avatar.title = userPresence.user_name + " sedang mengetik..."; 
         avatar.innerText = initial;
         
         collaboratorsContainer.appendChild(avatar);
@@ -280,8 +316,8 @@ function getRandomColor(name) {
     const colors = ['#f87171', '#fb923c', '#fbbf24', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#c084fc', '#f472b6'];
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
+    return colors[Colors = Math.abs(hash) % colors.length];
 }
 
-// Jalankan sistem
+// Jalankan sistem utama editor
 initEditor();
