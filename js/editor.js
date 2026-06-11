@@ -217,5 +217,42 @@ if(exportWordBtn) {
     });
 }
 
+// ==========================================
+// 8. FUNGSI BAGIKAN DOKUMEN KE TEMAN ✅
+// ==========================================
+const shareBtn = document.getElementById('share-btn');
+const shareModal = document.getElementById('share-modal');
+const confirmShareBtn = document.getElementById('confirm-share-btn');
+
+if (shareBtn) {
+    shareBtn.addEventListener('click', () => {
+        if (!currentDocId) { 
+            showToast("Simpan dulu dokumennya sebelum dibagikan!", "error"); 
+            return; 
+        }
+        shareModal.style.display = 'flex';
+    });
+}
+
+if (confirmShareBtn) {
+    confirmShareBtn.addEventListener('click', async () => {
+        const email = document.getElementById('share-email').value;
+        if (!email) return;
+
+        // Memasukkan email teman ke tabel collaborators
+        const { error } = await supabaseClient
+            .from('collaborators')
+            .insert([{ document_id: currentDocId, collaborator_email: email }]);
+
+        if (error) {
+            showToast("Gagal membagikan: " + error.message, "error");
+        } else {
+            showToast("✅ Berhasil dibagikan ke " + email, "success");
+            shareModal.style.display = 'none'; // Tutup pop-up
+            document.getElementById('share-email').value = ''; // Kosongkan input
+        }
+    });
+}
+
 // Jalankan sistem
 initEditor();

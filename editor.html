@@ -19,6 +19,9 @@
         <div style="display: flex; gap: 10px;">
             <button id="export-word-btn" class="btn" style="background: #2563eb; color: white; border: none; cursor: pointer;">📄 Download Word</button>
             <button id="export-pdf-btn" class="btn" style="background: #10b981; color: white; border: none; cursor: pointer;">⬇️ Download PDF</button>
+            
+            <button id="share-btn" class="btn" style="background: #6366f1; color: white; border: none; cursor: pointer;">🤝 Bagikan</button>
+            
             <button id="save-btn" class="btn btn-primary" style="border: none;">Simpan</button>
         </div>
     </nav>
@@ -35,7 +38,19 @@
     <main style="padding: 0 20px 40px;">
         <div id="editor-canvas" contenteditable="true" style="max-width: 800px; min-height: 800px; margin: 0 auto; background: white; padding: 50px; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); outline: none; line-height: 1.6; font-size: 16px;"></div>
     </main>
-<div id="toast-container" class="toast-container"></div>
+
+    <div id="share-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 20px; border-radius: 8px; width: 300px;">
+            <h3>Bagikan Dokumen</h3>
+            <input type="email" id="share-email" placeholder="Email teman..." style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px;">
+            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="document.getElementById('share-modal').style.display='none'" class="btn">Batal</button>
+                <button id="confirm-share-btn" class="btn" style="background: #6366f1; color: white; border: none; cursor: pointer;">Bagikan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
