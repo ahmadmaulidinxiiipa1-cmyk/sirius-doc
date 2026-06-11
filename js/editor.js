@@ -9,7 +9,7 @@ let currentDocId = null;
 let autoSaveTimer; 
 
 // ==========================================
-// 1. INISIALISASI
+// 1. INISIALISASI & MULTIPLAYER TRIGGER
 // ==========================================
 async function initEditor() {
     const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -26,6 +26,9 @@ async function initEditor() {
     if (docId) {
         currentDocId = docId;
         await loadDocument(docId); 
+        
+        // Panggil sistem kehadiran (Canva Mode) setelah dokumen dimuat
+        initMultiplayer(docId);
     }
 }
 
@@ -59,7 +62,6 @@ async function loadDocument(id) {
 function showToast(message, type = 'success') {
     let container = document.getElementById('toast-container');
     
-    // Jika wadah belum ada, buat otomatis
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
@@ -67,18 +69,13 @@ function showToast(message, type = 'success') {
         document.body.appendChild(container);
     }
     
-    // Buat kotak notifikasi
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerText = message;
     
-    // Masukkan ke dalam wadah
     container.appendChild(toast);
     
-    // Efek animasi muncul (10ms)
     setTimeout(() => toast.classList.add('show'), 10);
-    
-    // Hilangkan otomatis setelah 3 detik
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
@@ -101,7 +98,6 @@ async function saveDocument() {
         const userId = session.user.id;
 
         if (currentDocId) {
-            // UPDATE
             const { data, error } = await supabaseClient
                 .from('documents')
                 .update({ title: title, content: content, updated_at: new Date() })
@@ -111,7 +107,6 @@ async function saveDocument() {
             if (error) throw new Error(error.message);
             if (!data || data.length === 0) throw new Error("Update diblokir oleh sistem keamanan!");
         } else {
-            // BUAT BARU
             const { data, error } = await supabaseClient
                 .from('documents')
                 .insert([{ title: title, content: content, user_id: userId }])
@@ -123,15 +118,14 @@ async function saveDocument() {
             currentDocId = data[0].id;
             try { window.history.replaceState({}, '', `editor.html?id=${currentDocId}`); } catch (e) {}
             
-            // ALERT SUKSES DIGANTI JADI TOAST! ✅
             showToast("✅ Dokumen berhasil tersimpan!", "success");
+            initMultiplayer(currentDocId); // Mulai Realtime jika ini dokumen baru
         }
         
         saveBtn.innerText = "Tersimpan ✓";
         setTimeout(() => { saveBtn.innerText = "Simpan"; }, 3000);
         
     } catch (error) {
-        // ALERT GAGAL DIGANTI JADI TOAST! 🚨
         showToast("🚨 GAGAL: " + error.message, "error");
         saveBtn.innerText = "Gagal Simpan";
     } finally {
@@ -140,23 +134,18 @@ async function saveDocument() {
 }
 
 // ==========================================
-// 4. PEMICU AUTO-SAVE & TOMBOL
+// 4. PEMICU AUTO-SAVE & ALAT FORMAT
 // ==========================================
 function handleTyping() {
     saveBtn.innerText = "Mengetik...";
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(() => {
-        saveDocument();
-    }, 2000);
+    autoSaveTimer = setTimeout(() => saveDocument(), 2000);
 }
 
 if (editorCanvas) editorCanvas.addEventListener('input', handleTyping);
 if (titleInput) titleInput.addEventListener('input', handleTyping);
 if (saveBtn) saveBtn.addEventListener('click', saveDocument);
 
-// ==========================================
-// 5. ALAT FORMAT TEKS KERTAS
-// ==========================================
 window.formatText = function(command) {
     document.execCommand(command, false, null);
     editorCanvas.focus(); 
@@ -164,7 +153,7 @@ window.formatText = function(command) {
 }
 
 // ==========================================
-// 6. FITUR EKSPOR PDF
+// 5. FITUR EKSPOR PDF & WORD
 // ==========================================
 const exportPdfBtn = document.getElementById('export-pdf-btn');
 if(exportPdfBtn) {
@@ -174,43 +163,29 @@ if(exportPdfBtn) {
         exportPdfBtn.disabled = true;
 
         const element = document.getElementById('editor-canvas');
-        let fileName = titleInput.value.trim();
-        if (!fileName) fileName = "Dokumen_Sirius";
+        let fileName = titleInput.value.trim() || "Dokumen_Sirius";
 
-        const opt = {
-            margin:       1,
-            filename:     `${fileName}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-        };
-
-        html2pdf().set(opt).from(element).save().then(() => {
+        html2pdf().set({
+            margin: 1, filename: `${fileName}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        }).from(element).save().then(() => {
             exportPdfBtn.innerText = originalText;
             exportPdfBtn.disabled = false;
         });
     });
 }
 
-// ==========================================
-// 7. FITUR EKSPOR WORD
-// ==========================================
 const exportWordBtn = document.getElementById('export-word-btn');
 if(exportWordBtn) {
     exportWordBtn.addEventListener('click', () => {
         const content = document.getElementById('editor-canvas').innerHTML;
-        let fileName = titleInput.value.trim();
-        if (!fileName) fileName = "Dokumen_Sirius";
-
-        const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
-        const footer = "</body></html>";
-        const sourceHTML = header + content + footer;
-
-        const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+        let fileName = titleInput.value.trim() || "Dokumen_Sirius";
+        const sourceHTML = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>" + content + "</body></html>";
         const fileDownload = document.createElement("a");
-        
         document.body.appendChild(fileDownload);
-        fileDownload.href = source;
+        fileDownload.href = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
         fileDownload.download = fileName + '.doc';
         fileDownload.click();
         document.body.removeChild(fileDownload);
@@ -218,66 +193,95 @@ if(exportWordBtn) {
 }
 
 // ==========================================
-// 8. FUNGSI BAGIKAN DOKUMEN KE TEMAN ✅
+// 6. FITUR BAGIKAN DOKUMEN & SALIN LINK
 // ==========================================
 const shareBtn = document.getElementById('share-btn');
 const shareModal = document.getElementById('share-modal');
 const confirmShareBtn = document.getElementById('confirm-share-btn');
+const copyLinkBtn = document.getElementById('copy-link-btn');
 
-if (shareBtn) {
-    shareBtn.addEventListener('click', () => {
-        if (!currentDocId) { 
-            showToast("Simpan dulu dokumennya sebelum dibagikan!", "error"); 
-            return; 
+if (shareBtn) shareBtn.addEventListener('click', () => {
+    if (!currentDocId) return showToast("Simpan dulu dokumennya sebelum dibagikan!", "error");
+    shareModal.style.display = 'flex';
+});
+
+if (confirmShareBtn) confirmShareBtn.addEventListener('click', async () => {
+    const email = document.getElementById('share-email').value;
+    if (!email) return;
+    const { error } = await supabaseClient.from('collaborators').insert([{ document_id: currentDocId, collaborator_email: email }]);
+    if (error) showToast("Gagal membagikan: " + error.message, "error");
+    else { showToast("✅ Berhasil dibagikan ke " + email, "success"); shareModal.style.display = 'none'; document.getElementById('share-email').value = ''; }
+});
+
+if (copyLinkBtn) copyLinkBtn.addEventListener('click', () => {
+    if (!currentDocId) return showToast("Simpan dokumen dulu sebelum menyalin link!", "error");
+    navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?id=' + currentDocId)
+        .then(() => showToast("🔗 Link berhasil disalin!", "success"))
+        .catch(() => showToast("🚨 Gagal menyalin link.", "error"));
+});
+
+// ==========================================
+// 7. FITUR MULTIPLAYER: INDIKATOR KEHADIRAN 🟢
+// ==========================================
+const collaboratorsContainer = document.getElementById('collaborators-container');
+let realtimeChannel = null;
+
+async function initMultiplayer(docId) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+    const myName = session.user.email.split('@')[0];
+
+    // Buka saluran khusus dokumen ini
+    realtimeChannel = supabaseClient.channel('document-' + docId);
+
+    // Dengarkan siapa yang masuk dan keluar
+    realtimeChannel.on('presence', { event: 'sync' }, () => {
+        const newState = realtimeChannel.presenceState();
+        renderCollaborators(newState, session.user.id);
+    });
+
+    // Laporkan kehadiran kita ke database
+    realtimeChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+            await realtimeChannel.track({
+                user_id: session.user.id,
+                user_name: myName,
+                color: getRandomColor(myName)
+            });
         }
-        shareModal.style.display = 'flex';
     });
 }
 
-if (confirmShareBtn) {
-    confirmShareBtn.addEventListener('click', async () => {
-        const email = document.getElementById('share-email').value;
-        if (!email) return;
+function renderCollaborators(presenceState, myUserId) {
+    if (!collaboratorsContainer) return;
+    collaboratorsContainer.innerHTML = ''; 
 
-        // Memasukkan email teman ke tabel collaborators
-        const { error } = await supabaseClient
-            .from('collaborators')
-            .insert([{ document_id: currentDocId, collaborator_email: email }]);
+    for (const id in presenceState) {
+        const userPresence = presenceState[id][0];
+        if (userPresence.user_id === myUserId) continue; // Jangan tampilkan diri sendiri
 
-        if (error) {
-            showToast("Gagal membagikan: " + error.message, "error");
-        } else {
-            showToast("✅ Berhasil dibagikan ke " + email, "success");
-            shareModal.style.display = 'none'; // Tutup pop-up
-            document.getElementById('share-email').value = ''; // Kosongkan input
-        }
-    });
+        const initial = userPresence.user_name.charAt(0).toUpperCase();
+        const avatar = document.createElement('div');
+        avatar.style.cssText = `
+            width: 32px; height: 32px; border-radius: 50%;
+            background-color: ${userPresence.color}; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 14px; border: 2px solid white; 
+            margin-left: -10px; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;
+        `;
+        avatar.title = userPresence.user_name + " sedang online"; 
+        avatar.innerText = initial;
+        
+        collaboratorsContainer.appendChild(avatar);
+    }
+}
+
+function getRandomColor(name) {
+    const colors = ['#f87171', '#fb923c', '#fbbf24', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#c084fc', '#f472b6'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
 }
 
 // Jalankan sistem
 initEditor();
-
-// ==========================================
-// 9. FUNGSI SALIN LINK DOKUMEN 🔗
-// ==========================================
-const copyLinkBtn = document.getElementById('copy-link-btn');
-
-if (copyLinkBtn) {
-    copyLinkBtn.addEventListener('click', () => {
-        // Cek apakah dokumen sudah disave dan punya ID
-        if (!currentDocId) {
-            showToast("Simpan dokumen dulu sebelum menyalin link!", "error");
-            return;
-        }
-        
-        // Merakit link dokumenmu
-        const docLink = window.location.origin + window.location.pathname + '?id=' + currentDocId;
-        
-        // Memerintahkan browser untuk meng-copy link
-        navigator.clipboard.writeText(docLink).then(() => {
-            showToast("🔗 Link berhasil disalin! Silakan kirim ke temanmu.", "success");
-        }).catch(() => {
-            showToast("🚨 Gagal menyalin link.", "error");
-        });
-    });
-}
