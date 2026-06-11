@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - Sirius Doc</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body style="background-color: #f8fafc;">
+
+    <nav style="background: white; padding: 15px 30px; border-bottom: 1px solid #e2e8f0;">
+        <button onclick="window.location.href='dashboard.html'" class="btn" style="background: transparent; border: 1px solid #cbd5e1; cursor: pointer;">⬅️ Kembali ke Dashboard</button>
+    </nav>
+
+    <main style="padding: 40px 20px; max-width: 500px; margin: 0 auto;">
+        <div style="background: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <h2 style="margin-bottom: 25px; color: #1e293b; text-align: center;">Profil Akun</h2>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 13px; color: #64748b; margin-bottom: 5px; font-weight: 500;">Email Akun</label>
+                <div id="profile-email" style="padding: 12px 15px; background: #f1f5f9; border-radius: 8px; color: #334155; font-weight: 500; border: 1px solid #e2e8f0;">Memuat email...</div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;">
+
+            <h3 style="font-size: 16px; color: #1e293b; margin-bottom: 15px;">🔒 Ganti Kata Sandi</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 13px; color: #64748b; margin-bottom: 5px;">Kata Sandi Baru (Min. 6 Karakter)</label>
+                <input type="password" id="new-password" style="width: 100%; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; font-size: 13px; color: #64748b; margin-bottom: 5px;">Ulangi Kata Sandi Baru</label>
+                <input type="password" id="confirm-password" style="width: 100%; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
+            </div>
+
+            <button id="update-btn" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 15px; border: none; cursor: pointer;">Simpan Kata Sandi Baru</button>
+        </div>
+    </main>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html>

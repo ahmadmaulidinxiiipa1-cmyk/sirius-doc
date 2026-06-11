@@ -122,3 +122,69 @@ body {
 .toast.success { background-color: #10b981; } /* Hijau */
 .toast.error { background-color: #ef4444; } /* Merah */
 .toast.info { background-color: #3b82f6; } /* Biru */
+
+/* ==========================================
+   FITUR #4: RESPONSIF UNTUK LAYAR HP 📱
+   ========================================== */
+
+/* Kode ini HANYA aktif jika lebar layar 768px ke bawah (Tablet & HP) */
+@media screen and (max-width: 768px) {
+    
+    /* 1. Rapikan Navbar Dashboard */
+    .navbar {
+        flex-direction: column !important;
+        text-align: center;
+        gap: 15px;
+        padding: 15px !important;
+    }
+    .user-menu {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px !important;
+    }
+    
+    /* 2. Rapikan Navbar Editor */
+    .editor-navbar {
+        flex-direction: column !important;
+        text-align: center;
+        gap: 15px;
+        padding: 15px !important;
+    }
+    .editor-navbar > div {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    #title-input {
+        width: 100% !important;
+        text-align: center;
+        font-size: 16px !important;
+    }
+
+    /* 3. Rapikan Kotak Dokumen di Dashboard */
+    /* Mengubah letak tombol Buka & Hapus jadi di bawah judul */
+    #document-container > div > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 15px;
+    }
+
+    /* 4. Rapikan Alat Ketik (Toolbar) di Editor */
+    /* Supaya tombol B, I, U tidak keluar batas layar */
+    nav.editor-navbar + div {
+        flex-wrap: wrap !important;
+        justify-content: center;
+        padding: 15px !important;
+    }
+
+    /* 5. Rapikan Kertas Editor */
+    #editor-canvas {
+        padding: 25px !important;
+        min-height: 500px !important;
+    }
+
+    /* 6. Perkecil sedikit ukuran tombol utama */
+    .btn {
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+    }
+}
