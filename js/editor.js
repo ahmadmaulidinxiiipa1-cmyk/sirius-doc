@@ -7,13 +7,18 @@ const saveBtn = document.getElementById('save-btn');
 
 let currentDocId = null; 
 let autoSaveTimer; 
-let realtimeChannel = null; // Variabel global untuk saluran komunikasi
-let myUserId = null;        // Variabel global untuk menyimpan ID user aktif
+let realtimeChannel = null; 
+let myUserId = null;        
 
 // ==========================================
 // 1. INISIALISASI & MULTIPLAYER TRIGGER
 // ==========================================
 async function initEditor() {
+    if (typeof supabaseClient === 'undefined') {
+        console.error("🚨 Error: 'supabaseClient' tidak ditemukan.");
+        return;
+    }
+
     const { data: { session }, error } = await supabaseClient.auth.getSession();
     
     if (!session) {
@@ -28,17 +33,20 @@ async function initEditor() {
     if (docId) {
         currentDocId = docId;
         await loadDocument(docId); 
-        
-        // Panggil sistem kehadiran & siaran (Canva Mode) setelah dokumen dimuat
         initMultiplayer(docId);
     }
 }
 
 // ==========================================
-// 2. FUNGSI MEMUAT DOKUMEN LAMA
+// 2. FUNGSI MEMUAT DOKUMEN & CEK HAK AKSES
 // ==========================================
 async function loadDocument(id) {
-    saveBtn.innerText = "Memuat...";
+    if (saveBtn) saveBtn.innerText = "Memuat...";
+    
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const myEmail = session.user.email;
+    const myId = session.user.id;
+
     const { data, error } = await supabaseClient
         .from('documents')
         .select('*')
@@ -46,21 +54,81 @@ async function loadDocument(id) {
         .single();
 
     if (error) {
-        alert("Gagal memuat dokumen: " + error.message);
-        saveBtn.innerText = "Error";
+        alert("🔒 Akses Ditolak atau Dokumen tidak ditemukan!");
+        window.location.href = "dashboard.html";
         return;
     }
 
     if (data) {
-        titleInput.value = data.title;
-        editorCanvas.innerHTML = data.content;
-        saveBtn.innerText = "Tersimpan ✓";
+        if (titleInput) titleInput.value = data.title || "Dokumen Tanpa Judul";
+        if (editorCanvas) editorCanvas.innerHTML = data.content || "";
+        if (saveBtn) saveBtn.innerText = "Tersimpan ✓";
         
-        // --- FITUR BARU: Cocokkan status dropdown dengan database ---
+        // --- LOGIKA SATPAM: Tentukan Hak Akses ---
+        let permission = 'none'; 
+        
+        if (data.user_id === myId) {
+            permission = 'owner'; 
+        } else if (data.link_mode === 'edit') {
+            permission = 'edit';  
+        } else if (data.link_mode === 'view') {
+            permission = 'view';  
+        } else {
+            const { data: collab } = await supabaseClient
+                .from('collaborators')
+                .select('*')
+                .eq('document_id', id)
+                .eq('collaborator_email', myEmail)
+                .maybeSingle();
+                
+            if (collab) {
+                permission = 'edit'; 
+            }
+        }
+
+        // Terapkan Kunci Layar
+        applyPermissions(permission);
+
+        // Update Dropdown Status Link (Hanya terlihat jika ada di modal)
         const linkModeSelect = document.getElementById('link-mode-select');
         if (linkModeSelect && data.link_mode) {
             linkModeSelect.value = data.link_mode;
         }
+    }
+}
+
+// MESIN PENGUNCI LAYAR OTOMATIS (BEBAS TYPO)
+function applyPermissions(permission) {
+    if (!editorCanvas || !titleInput) return; 
+
+    const sidebar = document.querySelector('.sidebar');
+    const shareBtn = document.getElementById('share-btn');
+    const badge = document.getElementById('view-only-badge');
+    
+    if (permission === 'owner' || permission === 'edit') {
+        editorCanvas.setAttribute('contenteditable', 'true');
+        titleInput.disabled = false;
+        if (sidebar) sidebar.style.display = 'flex'; // ✅ Bersih dari typo!
+        if (saveBtn) saveBtn.style.display = 'inline-block';
+        if (shareBtn) shareBtn.style.display = 'inline-block';
+        if (badge) badge.remove(); 
+    } else if (permission === 'view') {
+        editorCanvas.setAttribute('contenteditable', 'false');
+        titleInput.disabled = true;
+        if (sidebar) sidebar.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (shareBtn) shareBtn.style.display = 'none'; 
+        
+        if (!document.getElementById('view-only-badge')) {
+            const viewBadge = document.createElement('span');
+            viewBadge.id = 'view-only-badge';
+            viewBadge.innerText = '👁️ Mode Melihat';
+            viewBadge.style.cssText = 'background: #e2e8f0; color: #475569; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-left: 15px; display: inline-block; vertical-align: middle;';
+            titleInput.parentNode.appendChild(viewBadge);
+        }
+    } else {
+        alert("🔒 Dokumen ini bersifat Pribadi. Akses ditolak!");
+        window.location.href = "dashboard.html";
     }
 }
 
@@ -69,18 +137,15 @@ async function loadDocument(id) {
 // ==========================================
 function showToast(message, type = 'success') {
     let container = document.getElementById('toast-container');
-    
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
         container.className = 'toast-container';
         document.body.appendChild(container);
     }
-    
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerText = message;
-    
     container.appendChild(toast);
     
     setTimeout(() => toast.classList.add('show'), 10);
@@ -94,6 +159,8 @@ function showToast(message, type = 'success') {
 // 3. FUNGSI MENYIMPAN DOKUMEN (ANTI CRASH)
 // ==========================================
 async function saveDocument() {
+    if (!saveBtn || !editorCanvas || !titleInput) return;
+
     saveBtn.innerText = "Menyimpan...";
     saveBtn.disabled = true;
 
@@ -101,8 +168,7 @@ async function saveDocument() {
     const content = editorCanvas.innerHTML; 
     
     try {
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-        if (sessionError || !session) throw new Error("Sesi login terputus.");
+        const { data: { session } } = await supabaseClient.auth.getSession();
         const userId = session.user.id;
 
         if (currentDocId) {
@@ -111,27 +177,23 @@ async function saveDocument() {
                 .update({ title: title, content: content, updated_at: new Date() })
                 .eq('id', currentDocId)
                 .select(); 
-            
             if (error) throw new Error(error.message);
-            if (!data || data.length === 0) throw new Error("Update diblokir oleh sistem keamanan!");
         } else {
             const { data, error } = await supabaseClient
                 .from('documents')
                 .insert([{ title: title, content: content, user_id: userId }])
                 .select(); 
-            
             if (error) throw new Error(error.message);
-            if (!data || data.length === 0) throw new Error("Gagal disimpan, diblokir oleh Satpam Supabase!");
             
             currentDocId = data[0].id;
             try { window.history.replaceState({}, '', `editor.html?id=${currentDocId}`); } catch (e) {}
             
             showToast("✅ Dokumen berhasil tersimpan!", "success");
-            initMultiplayer(currentDocId); // Mulai Realtime jika ini dokumen baru
+            initMultiplayer(currentDocId); 
         }
         
         saveBtn.innerText = "Tersimpan ✓";
-        setTimeout(() => { saveBtn.innerText = "Simpan"; }, 3000);
+        setTimeout(() => { if (saveBtn) saveBtn.innerText = "Simpan"; }, 3000);
         
     } catch (error) {
         showToast("🚨 GAGAL: " + error.message, "error");
@@ -145,10 +207,9 @@ async function saveDocument() {
 // 4. PEMICU AUTO-SAVE & ALAT FORMAT
 // ==========================================
 function handleTyping() {
-    saveBtn.innerText = "Mengetik...";
+    if (saveBtn) saveBtn.innerText = "Mengetik...";
     
-    // ✅ 1. SIARKAN KETIKAN SECARA REAL-TIME KEPADA TEMAN (CANVA MODE)
-    if (realtimeChannel && myUserId) {
+    if (realtimeChannel && myUserId && titleInput && editorCanvas) {
         realtimeChannel.send({
             type: 'broadcast',
             event: 'typing',
@@ -160,7 +221,6 @@ function handleTyping() {
         });
     }
 
-    // 2. Timer untuk Autosave ke database (tetap berjalan di latar belakang)
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => saveDocument(), 2000);
 }
@@ -169,10 +229,10 @@ if (editorCanvas) editorCanvas.addEventListener('input', handleTyping);
 if (titleInput) titleInput.addEventListener('input', handleTyping);
 if (saveBtn) saveBtn.addEventListener('click', saveDocument);
 
-window.formatText = function(command) {
-    document.execCommand(command, false, null);
-    editorCanvas.focus(); 
-    handleTyping(); // Picu siaran perubahan format teks
+window.formatText = function(command, value = null) {
+    document.execCommand(command, false, value);
+    if (editorCanvas) editorCanvas.focus(); 
+    handleTyping(); 
 }
 
 // ==========================================
@@ -186,7 +246,7 @@ if(exportPdfBtn) {
         exportPdfBtn.disabled = true;
 
         const element = document.getElementById('editor-canvas');
-        let fileName = titleInput.value.trim() || "Dokumen_Sirius";
+        let fileName = titleInput ? titleInput.value.trim() : "Dokumen_Sirius";
 
         html2pdf().set({
             margin: 1, filename: `${fileName}.pdf`,
@@ -203,8 +263,9 @@ if(exportPdfBtn) {
 const exportWordBtn = document.getElementById('export-word-btn');
 if(exportWordBtn) {
     exportWordBtn.addEventListener('click', () => {
-        const content = document.getElementById('editor-canvas').innerHTML;
-        let fileName = titleInput.value.trim() || "Dokumen_Sirius";
+        if (!editorCanvas) return;
+        const content = editorCanvas.innerHTML;
+        let fileName = titleInput ? titleInput.value.trim() : "Dokumen_Sirius";
         const sourceHTML = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>" + content + "</body></html>";
         const fileDownload = document.createElement("a");
         document.body.appendChild(fileDownload);
@@ -222,27 +283,26 @@ const shareBtn = document.getElementById('share-btn');
 const shareModal = document.getElementById('share-modal');
 const confirmShareBtn = document.getElementById('confirm-share-btn');
 const copyLinkBtn = document.getElementById('copy-link-btn');
-
-// Deklarasi Elemen Baru di Modal
 const linkModeSelect = document.getElementById('link-mode-select');
 const copyLinkModalBtn = document.getElementById('copy-link-modal-btn');
 
-// Buka Modal Bagikan
 if (shareBtn) shareBtn.addEventListener('click', () => {
     if (!currentDocId) return showToast("Simpan dulu dokumennya sebelum dibagikan!", "error");
-    shareModal.style.display = 'flex';
+    if (shareModal) shareModal.style.display = 'flex';
 });
 
-// Logika 1: Undang via Email
 if (confirmShareBtn) confirmShareBtn.addEventListener('click', async () => {
-    const email = document.getElementById('share-email').value;
+    const emailInputEl = document.getElementById('share-email');
+    const email = emailInputEl ? emailInputEl.value : '';
     if (!email) return;
     const { error } = await supabaseClient.from('collaborators').insert([{ document_id: currentDocId, collaborator_email: email }]);
     if (error) showToast("Gagal membagikan: " + error.message, "error");
-    else { showToast("✅ Berhasil dibagikan ke " + email, "success"); document.getElementById('share-email').value = ''; }
+    else { 
+        showToast("✅ Berhasil dibagikan ke " + email, "success"); 
+        if (emailInputEl) emailInputEl.value = ''; 
+    }
 });
 
-// Logika 2: Salin Link Cepat (di luar & di dalam modal)
 const copyLinkAction = () => {
     if (!currentDocId) return showToast("Simpan dokumen dulu sebelum menyalin link!", "error");
     navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?id=' + currentDocId)
@@ -252,10 +312,10 @@ const copyLinkAction = () => {
 if (copyLinkBtn) copyLinkBtn.addEventListener('click', copyLinkAction);
 if (copyLinkModalBtn) copyLinkModalBtn.addEventListener('click', copyLinkAction);
 
-// Logika 3: Mengubah Status Link saat Dropdown diganti (FITUR BARU)
+// SIARKAN PERUBAHAN IZIN KE TEMAN LAIN
 if (linkModeSelect) {
     linkModeSelect.addEventListener('change', async (e) => {
-        const newMode = e.target.value; // 'private', 'view', atau 'edit'
+        const newMode = e.target.value; 
         
         const { error } = await supabaseClient
             .from('documents')
@@ -265,16 +325,23 @@ if (linkModeSelect) {
         if (error) {
             showToast("🚨 Gagal merubah akses: " + error.message, "error");
         } else {
-            // Beri notifikasi sesuai pilihan
             if (newMode === 'private') showToast("🔒 Link diubah menjadi Pribadi", "info");
             else if (newMode === 'view') showToast("👁️ Siapa saja sekarang bisa Melihat", "success");
             else if (newMode === 'edit') showToast("✏️ Siapa saja sekarang bisa Mengedit", "success");
+            
+            if (realtimeChannel) {
+                realtimeChannel.send({
+                    type: 'broadcast',
+                    event: 'permission_update',
+                    payload: { link_mode: newMode }
+                });
+            }
         }
     });
 }
 
 // ==========================================
-// 7. FITUR MULTIPLAYER: INDIKATOR KEHADIRAN & BROADCAST 🟢
+// 7. FITUR MULTIPLAYER & TERIMA SIARAN
 // ==========================================
 const collaboratorsContainer = document.getElementById('collaborators-container');
 
@@ -282,36 +349,36 @@ async function initMultiplayer(docId) {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) return;
     
-    myUserId = session.user.id; // Menyimpan ID kita ke variabel global
+    myUserId = session.user.id; 
     const myName = session.user.email.split('@')[0];
 
-    // Buka saluran khusus dokumen ini
     realtimeChannel = supabaseClient.channel('document-' + docId);
 
-    // [Presence] Dengarkan siapa yang masuk dan keluar halaman dokumen
     realtimeChannel.on('presence', { event: 'sync' }, () => {
         const newState = realtimeChannel.presenceState();
         renderCollaborators(newState, session.user.id);
     });
 
-    // [Broadcast] ✅ JALUR TERIMA SIARAN: Dengarkan apa yang diketik teman
     realtimeChannel.on('broadcast', { event: 'typing' }, (response) => {
         const { user_id, title, content } = response.payload;
-        
-        // Hanya update jika siaran dikirim oleh orang lain
         if (user_id !== session.user.id) {
-            
-            // TRICK PRO: Jangan update kolom jika kita sendiri sedang fokus mengetik di sana 
-            if (document.activeElement !== titleInput && titleInput.value !== title) {
+            if (titleInput && document.activeElement !== titleInput && titleInput.value !== title) {
                 titleInput.value = title;
             }
-            if (document.activeElement !== editorCanvas && editorCanvas.innerHTML !== content) {
+            if (editorCanvas && document.activeElement !== editorCanvas && editorCanvas.innerHTML !== content) {
                 editorCanvas.innerHTML = content;
             }
         }
     });
 
-    // Daftarkan dan umumkan kehadiran kita ke saluran
+    // 📡 TERIMA PERINTAH KUNCI LAYAR DARI OWNER
+    realtimeChannel.on('broadcast', { event: 'permission_update' }, async (response) => {
+        if (currentDocId) {
+            await loadDocument(currentDocId);
+            showToast("⚠️ Pemilik dokumen telah memperbarui hak akses halaman ini.", "info");
+        }
+    });
+
     realtimeChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
             await realtimeChannel.track({
@@ -329,7 +396,7 @@ function renderCollaborators(presenceState, myUserId) {
 
     for (const id in presenceState) {
         const userPresence = presenceState[id][0];
-        if (userPresence.user_id === myUserId) continue; // Lewati deteksi diri sendiri
+        if (userPresence.user_id === myUserId) continue; 
 
         const initial = userPresence.user_name.charAt(0).toUpperCase();
         const avatar = document.createElement('div');
@@ -340,7 +407,7 @@ function renderCollaborators(presenceState, myUserId) {
             font-weight: bold; font-size: 14px; border: 2px solid white; 
             margin-left: -10px; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;
         `;
-        avatar.title = userPresence.user_name + " sedang mengetik..."; 
+        avatar.title = userPresence.user_name + " sedang berada di sini"; 
         avatar.innerText = initial;
         
         collaboratorsContainer.appendChild(avatar);
@@ -354,39 +421,35 @@ function getRandomColor(name) {
     return colors[Math.abs(hash) % colors.length];
 }
 
-// Jalankan sistem utama editor
-initEditor();
 // ==========================================
 // 8. LOGIKA FLOATING TOOLBAR (GAYA CANVA)
 // ==========================================
 const floatingToolbar = document.getElementById('floating-toolbar');
 
-// Mencegah toolbar hilang saat tombolnya diklik
-floatingToolbar.addEventListener('mousedown', (e) => {
-    e.preventDefault(); 
-});
+if (floatingToolbar) {
+    floatingToolbar.addEventListener('mousedown', (e) => {
+        e.preventDefault(); 
+    });
+}
 
-// Deteksi saat teks di-blok (highlight)
 document.addEventListener('selectionchange', () => {
+    if (!floatingToolbar || !editorCanvas) return; 
+
+    // Jika mode melihat, sembunyikan toolbar
+    if (editorCanvas.getAttribute('contenteditable') === 'false') {
+        floatingToolbar.style.display = 'none';
+        return;
+    }
+
     const selection = window.getSelection();
-    
-    // Jika ada teks yang dipilih dan bukan cuma klik biasa
     if (selection.rangeCount > 0 && !selection.isCollapsed) {
         const range = selection.getRangeAt(0);
-        
-        // Pastikan yang di-blok ada di dalam kertas editor kita
         if (editorCanvas.contains(range.commonAncestorContainer)) {
-            const rect = range.getBoundingClientRect(); // Ambil koordinat teks yang diblok
-            
+            const rect = range.getBoundingClientRect(); 
             floatingToolbar.style.display = 'flex';
-            
-            // Hitung posisi agar muncul tepat di atas teks
             let topPos = rect.top - floatingToolbar.offsetHeight - 10;
             let leftPos = rect.left + (rect.width / 2) - (floatingToolbar.offsetWidth / 2);
-            
-            // Jangan sampai keluar dari atas layar
             if (topPos < 10) topPos = rect.bottom + 10; 
-            
             floatingToolbar.style.top = `${topPos}px`;
             floatingToolbar.style.left = `${leftPos}px`;
         } else {
@@ -398,104 +461,71 @@ document.addEventListener('selectionchange', () => {
 });
 
 // ==========================================
-// 9. FITUR UPLOAD GAMBAR (SUPABASE STORAGE)
+// 9. FITUR UPLOAD GAMBAR & TABEL (CANVA TOOLS)
 // ==========================================
 const imageUpload = document.getElementById('image-upload');
 const imageBtn = document.getElementById('image-btn');
 
-// Saat tombol "Gambar" diklik, buka penjelajah file di laptop/HP
-if (imageBtn) {
-    imageBtn.addEventListener('click', () => {
-        imageUpload.click();
-    });
+if (imageBtn && imageUpload) {
+    imageBtn.addEventListener('click', () => { imageUpload.click(); });
 }
 
-// Saat gambar sudah dipilih oleh user
 if (imageUpload) {
     imageUpload.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // 1. Munculkan status loading
         showToast("⏳ Mengunggah gambar...", "info");
-
-        // 2. Buat nama file unik (agar tidak bentrok jika namanya sama)
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `uploads/${fileName}`;
 
         try {
-            // 3. Kirim gambar ke Brankas Supabase ('document-images')
-            const { error: uploadError } = await supabaseClient.storage
-                .from('document-images')
-                .upload(filePath, file);
-
+            const { error: uploadError } = await supabaseClient.storage.from('document-images').upload(filePath, file);
             if (uploadError) throw uploadError;
 
-            // 4. Minta Link URL publik dari gambar yang baru diupload
-            const { data } = supabaseClient.storage
-                .from('document-images')
-                .getPublicUrl(filePath);
-
+            const { data } = supabaseClient.storage.from('document-images').getPublicUrl(filePath);
             const publicUrl = data.publicUrl;
 
-            // 5. Masukkan gambar ke dalam kertas Editor (dengan gaya estetik)
-            editorCanvas.focus();
-            const imgTag = `<img src="${publicUrl}" style="max-width: 100%; border-radius: 8px; margin: 15px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`;
-            document.execCommand('insertHTML', false, imgTag);
-
-            // 6. Selesai!
+            if (editorCanvas) {
+                editorCanvas.focus();
+                const imgTag = `<img src="${publicUrl}" style="max-width: 100%; border-radius: 8px; margin: 15px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`;
+                document.execCommand('insertHTML', false, imgTag);
+            }
             showToast("✅ Gambar berhasil disisipkan!", "success");
-            
-            // Picu fungsi ngetik agar gambar ini otomatis di-save ke database & disiarkan ke teman
             handleTyping(); 
-
         } catch (error) {
             showToast("🚨 Gagal unggah: " + error.message, "error");
         } finally {
-            // Bersihkan input agar bisa pilih gambar yang sama lagi jika perlu
             e.target.value = ''; 
         }
     });
 }
-// ==========================================
-// 10. FITUR TABEL & GARIS PEMBATAS
-// ==========================================
 
-// Fungsi Membuat Tabel (Default 3 Baris, 3 Kolom)
 window.insertTable = function(rows, cols) {
+    if (!editorCanvas) return;
     editorCanvas.focus();
-    
-    // Kita buat kerangka HTML tabelnya
     let tableHTML = '<table><tbody>';
-    
     for (let i = 0; i < rows; i++) {
         tableHTML += '<tr>';
         for (let j = 0; j < cols; j++) {
-            if (i === 0) {
-                tableHTML += '<th>Header</th>'; // Baris pertama jadi Header
-            } else {
-                tableHTML += '<td>Ketik di sini...</td>'; // Sisanya jadi sel biasa
-            }
+            if (i === 0) tableHTML += '<th>Header</th>';
+            else tableHTML += '<td>Ketik di sini...</td>';
         }
         tableHTML += '</tr>';
     }
-    
-    // Tambahkan <p><br></p> di akhir agar kursor tidak terjebak di dalam tabel
     tableHTML += '</tbody></table><p><br></p>'; 
-    
-    // Sisipkan ke dalam kertas
     document.execCommand('insertHTML', false, tableHTML);
-    handleTyping(); // Siarkan ke teman dan otomatis simpan!
+    handleTyping(); 
 };
 
-// Fungsi Membuat Garis Pembatas
 window.insertDivider = function() {
+    if (!editorCanvas) return;
     editorCanvas.focus();
-    
-    // Garis elegan dengan margin atas-bawah
     const hrHTML = '<hr style="border: 0; height: 1px; background: #cbd5e1; margin: 30px 0;"><p><br></p>';
-    
     document.execCommand('insertHTML', false, hrHTML);
     handleTyping();
 };
+
+// Jalankan sistem
+initEditor();
