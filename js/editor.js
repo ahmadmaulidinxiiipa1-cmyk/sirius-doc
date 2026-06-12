@@ -356,3 +356,146 @@ function getRandomColor(name) {
 
 // Jalankan sistem utama editor
 initEditor();
+// ==========================================
+// 8. LOGIKA FLOATING TOOLBAR (GAYA CANVA)
+// ==========================================
+const floatingToolbar = document.getElementById('floating-toolbar');
+
+// Mencegah toolbar hilang saat tombolnya diklik
+floatingToolbar.addEventListener('mousedown', (e) => {
+    e.preventDefault(); 
+});
+
+// Deteksi saat teks di-blok (highlight)
+document.addEventListener('selectionchange', () => {
+    const selection = window.getSelection();
+    
+    // Jika ada teks yang dipilih dan bukan cuma klik biasa
+    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        
+        // Pastikan yang di-blok ada di dalam kertas editor kita
+        if (editorCanvas.contains(range.commonAncestorContainer)) {
+            const rect = range.getBoundingClientRect(); // Ambil koordinat teks yang diblok
+            
+            floatingToolbar.style.display = 'flex';
+            
+            // Hitung posisi agar muncul tepat di atas teks
+            let topPos = rect.top - floatingToolbar.offsetHeight - 10;
+            let leftPos = rect.left + (rect.width / 2) - (floatingToolbar.offsetWidth / 2);
+            
+            // Jangan sampai keluar dari atas layar
+            if (topPos < 10) topPos = rect.bottom + 10; 
+            
+            floatingToolbar.style.top = `${topPos}px`;
+            floatingToolbar.style.left = `${leftPos}px`;
+        } else {
+            floatingToolbar.style.display = 'none';
+        }
+    } else {
+        floatingToolbar.style.display = 'none';
+    }
+});
+
+// ==========================================
+// 9. FITUR UPLOAD GAMBAR (SUPABASE STORAGE)
+// ==========================================
+const imageUpload = document.getElementById('image-upload');
+const imageBtn = document.getElementById('image-btn');
+
+// Saat tombol "Gambar" diklik, buka penjelajah file di laptop/HP
+if (imageBtn) {
+    imageBtn.addEventListener('click', () => {
+        imageUpload.click();
+    });
+}
+
+// Saat gambar sudah dipilih oleh user
+if (imageUpload) {
+    imageUpload.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 1. Munculkan status loading
+        showToast("⏳ Mengunggah gambar...", "info");
+
+        // 2. Buat nama file unik (agar tidak bentrok jika namanya sama)
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `uploads/${fileName}`;
+
+        try {
+            // 3. Kirim gambar ke Brankas Supabase ('document-images')
+            const { error: uploadError } = await supabaseClient.storage
+                .from('document-images')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 4. Minta Link URL publik dari gambar yang baru diupload
+            const { data } = supabaseClient.storage
+                .from('document-images')
+                .getPublicUrl(filePath);
+
+            const publicUrl = data.publicUrl;
+
+            // 5. Masukkan gambar ke dalam kertas Editor (dengan gaya estetik)
+            editorCanvas.focus();
+            const imgTag = `<img src="${publicUrl}" style="max-width: 100%; border-radius: 8px; margin: 15px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`;
+            document.execCommand('insertHTML', false, imgTag);
+
+            // 6. Selesai!
+            showToast("✅ Gambar berhasil disisipkan!", "success");
+            
+            // Picu fungsi ngetik agar gambar ini otomatis di-save ke database & disiarkan ke teman
+            handleTyping(); 
+
+        } catch (error) {
+            showToast("🚨 Gagal unggah: " + error.message, "error");
+        } finally {
+            // Bersihkan input agar bisa pilih gambar yang sama lagi jika perlu
+            e.target.value = ''; 
+        }
+    });
+}
+// ==========================================
+// 10. FITUR TABEL & GARIS PEMBATAS
+// ==========================================
+
+// Fungsi Membuat Tabel (Default 3 Baris, 3 Kolom)
+window.insertTable = function(rows, cols) {
+    editorCanvas.focus();
+    
+    // Kita buat kerangka HTML tabelnya
+    let tableHTML = '<table><tbody>';
+    
+    for (let i = 0; i < rows; i++) {
+        tableHTML += '<tr>';
+        for (let j = 0; j < cols; j++) {
+            if (i === 0) {
+                tableHTML += '<th>Header</th>'; // Baris pertama jadi Header
+            } else {
+                tableHTML += '<td>Ketik di sini...</td>'; // Sisanya jadi sel biasa
+            }
+        }
+        tableHTML += '</tr>';
+    }
+    
+    // Tambahkan <p><br></p> di akhir agar kursor tidak terjebak di dalam tabel
+    tableHTML += '</tbody></table><p><br></p>'; 
+    
+    // Sisipkan ke dalam kertas
+    document.execCommand('insertHTML', false, tableHTML);
+    handleTyping(); // Siarkan ke teman dan otomatis simpan!
+};
+
+// Fungsi Membuat Garis Pembatas
+window.insertDivider = function() {
+    editorCanvas.focus();
+    
+    // Garis elegan dengan margin atas-bawah
+    const hrHTML = '<hr style="border: 0; height: 1px; background: #cbd5e1; margin: 30px 0;"><p><br></p>';
+    
+    document.execCommand('insertHTML', false, hrHTML);
+    handleTyping();
+};

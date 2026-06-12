@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/editor.css">
 </head>
-<body style="background-color: #f8fafc;">
+<body>
 
-    <nav class="editor-navbar" style="background: white; display: flex; justify-content: space-between; padding: 15px 30px; border-bottom: 1px solid #e2e8f0; align-items: center;">
+    <nav class="editor-navbar">
         <div style="display: flex; align-items: center; gap: 15px;">
             <button onclick="window.location.href='dashboard.html'" class="btn" style="background: transparent; border: 1px solid #cbd5e1; cursor: pointer;">⬅️ Kembali</button>
             <div class="document-title">
@@ -21,97 +21,94 @@
         <div style="display: flex; gap: 10px; align-items: center;">
             <div id="collaborators-container" style="display: flex; gap: -10px; margin-right: 15px;"></div>
 
-            <button id="export-word-btn" class="btn" style="background: #2563eb; color: white; border: none; cursor: pointer;">📄 Download Word</button>
-            <button id="export-pdf-btn" class="btn" style="background: #10b981; color: white; border: none; cursor: pointer;">⬇️ Download PDF</button>
-            
-            <button id="copy-link-btn" class="btn" style="background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; cursor: pointer;">🔗 Salin Link</button>
+            <button id="export-word-btn" class="btn" style="background: #2563eb; color: white; border: none; cursor: pointer;">📄 Word</button>
+            <button id="export-pdf-btn" class="btn" style="background: #10b981; color: white; border: none; cursor: pointer;">⬇️ PDF</button>
             <button id="share-btn" class="btn" style="background: #6366f1; color: white; border: none; cursor: pointer;">🤝 Bagikan</button>
-            
             <button id="save-btn" class="btn btn-primary" style="border: none;">Simpan</button>
         </div>
     </nav>
 
-    <div class="toolbar-container">
-        <select class="toolbar-select" onchange="formatText('fontName', this.value)">
-            <option value="Arial">Arial</option>
-            <option value="Times New Roman">Times New Roman</option>
-            <option value="Courier New">Courier New</option>
-            <option value="Georgia">Georgia</option>
-        </select>
+    <div class="editor-layout">
         
-        <select class="toolbar-select" onchange="formatText('formatBlock', this.value)">
-            <option value="P">Paragraf Normal</option>
-            <option value="H1">Heading 1 (Besar)</option>
-            <option value="H2">Heading 2 (Sedang)</option>
-            <option value="H3">Heading 3 (Kecil)</option>
-        </select>
+        <aside class="sidebar">
+            
+            <input type="file" id="image-upload" accept="image/*" style="display: none;">
+            
+            <button id="image-btn" class="sidebar-btn">
+                <span class="icon">🖼️</span> Gambar
+            </button>
+            
+            <button class="sidebar-btn" onclick="insertTable(3, 3)">
+                <span class="icon">📊</span> Tabel
+            </button>
+            
+            <button class="sidebar-btn" onclick="insertDivider()">
+                <span class="icon">➖</span> Garis
+            </button>
+            
+        </aside>
 
-        <div class="toolbar-divider"></div>
-
-        <button class="toolbar-btn" onclick="formatText('bold')" style="font-weight: bold;">B</button>
-        <button class="toolbar-btn" onclick="formatText('italic')" style="font-style: italic;">I</button>
-        <button class="toolbar-btn" onclick="formatText('underline')" style="text-decoration: underline;">U</button>
-        
-        <div class="toolbar-divider"></div>
-
-        <div style="display: flex; align-items: center; gap: 5px;" title="Warna Teks">
-            <span style="font-size: 14px; color: #64748b;">A</span>
-            <input type="color" class="toolbar-color" onchange="formatText('foreColor', this.value)" value="#000000">
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px;" title="Warna Latar (Highlight)">
-            <span style="font-size: 14px; color: #64748b;">🖌️</span>
-            <input type="color" class="toolbar-color" onchange="formatText('hiliteColor', this.value)" value="#ffffff">
-        </div>
-
-        <div class="toolbar-divider"></div>
-
-        <button class="toolbar-btn" onclick="formatText('justifyLeft')">⬅️ Kiri</button>
-        <button class="toolbar-btn" onclick="formatText('justifyCenter')">↔️ Tengah</button>
-        <button class="toolbar-btn" onclick="formatText('justifyRight')">➡️ Kanan</button>
-
-        <div class="toolbar-divider"></div>
-
-        <button class="toolbar-btn" onclick="formatText('insertUnorderedList')">• Bullet</button>
-        <button class="toolbar-btn" onclick="formatText('insertOrderedList')">1. Angka</button>
-        <button class="toolbar-btn" onclick="formatText('removeFormat')" style="color: #ef4444;" title="Hapus Semua Format">🧹 Bersih</button>
+        <main class="workspace">
+            <div id="editor-canvas" class="paper" contenteditable="true"></div>
+        </main>
     </div>
 
-    <main style="padding: 0 20px 40px;">
-        <div id="editor-canvas" contenteditable="true"></div>
-    </main>
+    <div id="floating-toolbar" class="floating-toolbar" style="display: none;">
+        <select onchange="formatText('fontName', this.value)">
+            <option value="Arial">Arial</option>
+            <option value="Times New Roman">Times</option>
+            <option value="Courier New">Courier</option>
+        </select>
+        
+        <select onchange="formatText('formatBlock', this.value)">
+            <option value="P">Teks Normal</option>
+            <option value="H1">Judul 1</option>
+            <option value="H2">Judul 2</option>
+        </select>
+
+        <div class="toolbar-divider"></div>
+        <button onclick="formatText('bold')" style="font-weight: bold;">B</button>
+        <button onclick="formatText('italic')" style="font-style: italic;">I</button>
+        <button onclick="formatText('underline')" style="text-decoration: underline;">U</button>
+        
+        <div class="toolbar-divider"></div>
+        <input type="color" onchange="formatText('foreColor', this.value)" value="#ffffff" title="Warna Teks">
+        <input type="color" onchange="formatText('hiliteColor', this.value)" value="#1e293b" title="Warna Latar">
+
+        <div class="toolbar-divider"></div>
+        <button onclick="formatText('justifyLeft')">⬅️</button>
+        <button onclick="formatText('justifyCenter')">↔️</button>
+        <button onclick="formatText('justifyRight')">➡️</button>
+        <button onclick="formatText('insertUnorderedList')">•</button>
+    </div>
 
     <div id="share-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 25px; border-radius: 12px; width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-            <h3 style="margin-top:0; margin-bottom: 20px; color: #1e293b;">Bagikan Dokumen</h3>
-            
+        <div style="background: white; padding: 25px; border-radius: 12px; width: 380px;">
+            <h3 style="margin-top:0; margin-bottom: 20px;">Bagikan Dokumen</h3>
             <div style="margin-bottom: 20px;">
-                <label style="font-size: 13px; font-weight: 600; color: #64748b; display: block; margin-bottom: 8px;">Undang Teman (Akses Edit)</label>
+                <label style="font-size: 13px; font-weight: 600; color: #64748b; display: block; margin-bottom: 8px;">Undang Teman</label>
                 <div style="display: flex; gap: 8px;">
                     <input type="email" id="share-email" placeholder="contoh@email.com" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
-                    <button id="confirm-share-btn" class="btn" style="background: #6366f1; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 6px; font-weight: 600;">Undang</button>
+                    <button id="confirm-share-btn" class="btn" style="background: #6366f1; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 6px;">Undang</button>
                 </div>
             </div>
-
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-
             <div style="margin-bottom: 25px;">
                 <label style="font-size: 13px; font-weight: 600; color: #64748b; display: block; margin-bottom: 8px;">Akses Link Bersama</label>
-                <select id="link-mode-select" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; cursor: pointer; font-size: 14px; font-weight: 500; color: #1e293b; background: #f8fafc;">
+                <select id="link-mode-select" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none;">
                     <option value="private">🔒 Pribadi (Hanya yang diundang)</option>
                     <option value="view">👁️ Siapa saja yang punya link bisa Lihat</option>
                     <option value="edit">✏️ Siapa saja yang punya link bisa Edit</option>
                 </select>
             </div>
-
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                <button id="copy-link-modal-btn" style="flex: 1; padding: 10px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600; color: #475569;">🔗 Salin Link</button>
-                <button onclick="document.getElementById('share-modal').style.display='none'" style="padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; color: #475569;">Selesai</button>
+                <button id="copy-link-modal-btn" style="flex: 1; padding: 10px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600;">🔗 Salin Link</button>
+                <button onclick="document.getElementById('share-modal').style.display='none'" style="padding: 10px 20px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Selesai</button>
             </div>
         </div>
     </div>
 
     <div id="toast-container" class="toast-container"></div>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
