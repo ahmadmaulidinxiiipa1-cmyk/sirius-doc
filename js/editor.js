@@ -55,6 +55,12 @@ async function loadDocument(id) {
         titleInput.value = data.title;
         editorCanvas.innerHTML = data.content;
         saveBtn.innerText = "Tersimpan ✓";
+        
+        // --- FITUR BARU: Cocokkan status dropdown dengan database ---
+        const linkModeSelect = document.getElementById('link-mode-select');
+        if (linkModeSelect && data.link_mode) {
+            linkModeSelect.value = data.link_mode;
+        }
     }
 }
 
@@ -210,32 +216,62 @@ if(exportWordBtn) {
 }
 
 // ==========================================
-// 6. FITUR BAGIKAN DOKUMEN & SALIN LINK
+// 6. FITUR BAGIKAN DOKUMEN & PENGATURAN LINK
 // ==========================================
 const shareBtn = document.getElementById('share-btn');
 const shareModal = document.getElementById('share-modal');
 const confirmShareBtn = document.getElementById('confirm-share-btn');
 const copyLinkBtn = document.getElementById('copy-link-btn');
 
+// Deklarasi Elemen Baru di Modal
+const linkModeSelect = document.getElementById('link-mode-select');
+const copyLinkModalBtn = document.getElementById('copy-link-modal-btn');
+
+// Buka Modal Bagikan
 if (shareBtn) shareBtn.addEventListener('click', () => {
     if (!currentDocId) return showToast("Simpan dulu dokumennya sebelum dibagikan!", "error");
     shareModal.style.display = 'flex';
 });
 
+// Logika 1: Undang via Email
 if (confirmShareBtn) confirmShareBtn.addEventListener('click', async () => {
     const email = document.getElementById('share-email').value;
     if (!email) return;
     const { error } = await supabaseClient.from('collaborators').insert([{ document_id: currentDocId, collaborator_email: email }]);
     if (error) showToast("Gagal membagikan: " + error.message, "error");
-    else { showToast("✅ Berhasil dibagikan ke " + email, "success"); shareModal.style.display = 'none'; document.getElementById('share-email').value = ''; }
+    else { showToast("✅ Berhasil dibagikan ke " + email, "success"); document.getElementById('share-email').value = ''; }
 });
 
-if (copyLinkBtn) copyLinkBtn.addEventListener('click', () => {
+// Logika 2: Salin Link Cepat (di luar & di dalam modal)
+const copyLinkAction = () => {
     if (!currentDocId) return showToast("Simpan dokumen dulu sebelum menyalin link!", "error");
     navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?id=' + currentDocId)
         .then(() => showToast("🔗 Link berhasil disalin!", "success"))
         .catch(() => showToast("🚨 Gagal menyalin link.", "error"));
-});
+};
+if (copyLinkBtn) copyLinkBtn.addEventListener('click', copyLinkAction);
+if (copyLinkModalBtn) copyLinkModalBtn.addEventListener('click', copyLinkAction);
+
+// Logika 3: Mengubah Status Link saat Dropdown diganti (FITUR BARU)
+if (linkModeSelect) {
+    linkModeSelect.addEventListener('change', async (e) => {
+        const newMode = e.target.value; // 'private', 'view', atau 'edit'
+        
+        const { error } = await supabaseClient
+            .from('documents')
+            .update({ link_mode: newMode })
+            .eq('id', currentDocId);
+            
+        if (error) {
+            showToast("🚨 Gagal merubah akses: " + error.message, "error");
+        } else {
+            // Beri notifikasi sesuai pilihan
+            if (newMode === 'private') showToast("🔒 Link diubah menjadi Pribadi", "info");
+            else if (newMode === 'view') showToast("👁️ Siapa saja sekarang bisa Melihat", "success");
+            else if (newMode === 'edit') showToast("✏️ Siapa saja sekarang bisa Mengedit", "success");
+        }
+    });
+}
 
 // ==========================================
 // 7. FITUR MULTIPLAYER: INDIKATOR KEHADIRAN & BROADCAST 🟢
@@ -266,7 +302,6 @@ async function initMultiplayer(docId) {
         if (user_id !== session.user.id) {
             
             // TRICK PRO: Jangan update kolom jika kita sendiri sedang fokus mengetik di sana 
-            // Ini sangat krusial agar posisi kursor ketikan kita tidak melompat-lompat
             if (document.activeElement !== titleInput && titleInput.value !== title) {
                 titleInput.value = title;
             }
@@ -316,7 +351,7 @@ function getRandomColor(name) {
     const colors = ['#f87171', '#fb923c', '#fbbf24', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#c084fc', '#f472b6'];
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Colors = Math.abs(hash) % colors.length];
+    return colors[Math.abs(hash) % colors.length];
 }
 
 // Jalankan sistem utama editor
