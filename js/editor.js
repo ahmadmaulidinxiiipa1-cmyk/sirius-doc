@@ -529,3 +529,205 @@ window.insertDivider = function() {
 
 // Jalankan sistem
 initEditor();
+// ==========================================
+// 10. SISTEM EDIT TABEL DINAMIS (CANVA STYLE)
+// ==========================================
+const tableToolbar = document.getElementById('table-toolbar');
+let currentTable = null;
+let currentRow = null;
+let currentCell = null;
+
+// Deteksi klik pada tabel
+if (editorCanvas) {
+    editorCanvas.addEventListener('click', (e) => {
+        const cell = e.target.closest('td, th');
+        
+        if (cell && editorCanvas.contains(cell)) {
+            currentCell = cell;
+            currentRow = cell.closest('tr');
+            currentTable = cell.closest('table');
+
+            // Munculkan toolbar
+            const rect = currentTable.getBoundingClientRect();
+            tableToolbar.style.display = 'flex';
+            tableToolbar.style.position = 'absolute'; // Pastikan absolute agar mengikuti posisi
+            tableToolbar.style.top = `${rect.top + window.scrollY - 45}px`;
+            tableToolbar.style.left = `${rect.left + window.scrollX}px`;
+        } else {
+            if (tableToolbar) tableToolbar.style.display = 'none';
+            currentTable = null;
+        }
+    });
+}
+
+// FUNGSI AKSI (Pastikan nama fungsi ini sama dengan di HTML)
+window.addTableRow = function() {
+    if (!currentTable || !currentRow) return;
+    const newRow = currentRow.cloneNode(true);
+    newRow.querySelectorAll('td, th').forEach(c => c.innerText = '...');
+    currentRow.after(newRow);
+    handleTyping();
+};
+
+window.addTableCol = function() {
+    if (!currentTable || !currentCell) return;
+    const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
+    currentTable.querySelectorAll('tr').forEach(row => {
+        const newCell = row.children[cellIndex].cloneNode(true);
+        newCell.innerText = '...';
+        row.children[cellIndex].after(newCell);
+    });
+    handleTyping();
+};
+
+window.deleteTableRow = function() {
+    if (!currentTable || !currentRow) return;
+    if (currentTable.querySelectorAll('tr').length <= 1) return alert("Minimal 1 baris!");
+    currentRow.remove();
+    tableToolbar.style.display = 'none';
+    handleTyping();
+};
+
+window.deleteTableCol = function() {
+    if (!currentTable || !currentCell) return;
+    const cellIndex = Array.from(currentRow.children).indexOf(currentCell);
+    if (currentRow.children.length <= 1) return alert("Minimal 1 kolom!");
+    currentTable.querySelectorAll('tr').forEach(row => {
+        if (row.children[cellIndex]) row.children[cellIndex].remove();
+    });
+    tableToolbar.style.display = 'none';
+    handleTyping();
+};
+
+window.deleteTableFull = function() {
+    if (currentTable) {
+        currentTable.remove();
+        tableToolbar.style.display = 'none';
+        handleTyping();
+    }
+};
+// ==========================================
+// 11. FITUR PENGATURAN UKURAN KERTAS DINAMIS
+// ==========================================
+const paperSizeSelect = document.getElementById('paper-size-select');
+const customPaperInputs = document.getElementById('custom-paper-inputs');
+const customWidth = document.getElementById('custom-width');
+const customHeight = document.getElementById('custom-height');
+
+// Data Ukuran Kertas Standar (dalam milimeter)
+const paperSizes = {
+    'a4': { width: '210mm', minHeight: '297mm' },
+    'legal': { width: '216mm', minHeight: '356mm' },
+    'f4': { width: '215mm', minHeight: '330mm' }
+};
+
+function applyPaperSize() {
+    if (!editorCanvas) return;
+    
+    const size = paperSizeSelect.value;
+    
+    if (size === 'custom') {
+        // Tampilkan kotak input angka jika pilih Custom
+        customPaperInputs.style.display = 'flex';
+        editorCanvas.style.width = customWidth.value + 'mm';
+        editorCanvas.style.minHeight = customHeight.value + 'mm';
+    } else {
+        // Sembunyikan kotak input dan gunakan ukuran standar
+        customPaperInputs.style.display = 'none';
+        editorCanvas.style.width = paperSizes[size].width;
+        editorCanvas.style.minHeight = paperSizes[size].minHeight;
+    }
+}
+
+// Pasang pendeteksi perubahan
+if (paperSizeSelect) {
+    paperSizeSelect.addEventListener('change', applyPaperSize);
+}
+if (customWidth && customHeight) {
+    customWidth.addEventListener('input', applyPaperSize);
+    customHeight.addEventListener('input', applyPaperSize);
+}
+// ==========================================
+// 12. FITUR RESIZE GAMBAR (OTAK-ATIK ALA CANVA)
+// ==========================================
+let activeImage = null;
+let isResizing = false;
+let startX, startWidth;
+
+if (editorCanvas) {
+    // 1. Deteksi saat gambar diklik untuk dimunculkan kotaknya
+    editorCanvas.addEventListener('click', (e) => {
+        if (e.target.tagName === 'IMG') {
+            // Bersihkan efek dari gambar sebelumnya jika ada
+            if (activeImage) activeImage.style.outline = 'none';
+            
+            activeImage = e.target;
+            // Beri garis tepi biru sebagai tanda sedang diedit
+            activeImage.style.outline = '3px solid #4f46e5';
+            activeImage.style.cursor = 'ew-resize'; // Kursor panah kanan-kiri
+        } else {
+            // Jika klik di luar gambar, hilangkan garis tepinya
+            if (activeImage) {
+                activeImage.style.outline = 'none';
+                activeImage.style.cursor = 'default';
+                activeImage = null;
+            }
+        }
+    });
+
+    // 2. Mulai proses tarik ukuran (Klik Tahan)
+    editorCanvas.addEventListener('mousedown', (e) => {
+        if (e.target.tagName === 'IMG' && activeImage === e.target) {
+            isResizing = true;
+            startX = e.clientX;
+            // Ambil ukuran lebar gambar saat ini
+            startWidth = activeImage.clientWidth; 
+            e.preventDefault(); // Mencegah gambar ter-drag seperti teks
+        }
+    });
+
+    // 3. Proses mengubah ukuran saat mouse digeser
+    document.addEventListener('mousemove', (e) => {
+        if (isResizing && activeImage) {
+            // Hitung ukuran baru berdasarkan pergeseran mouse
+            const newWidth = startWidth + (e.clientX - startX);
+            // Terapkan ukuran baru (jangan sampai lebih lebar dari kertas)
+            activeImage.style.width = `${newWidth}px`;
+            activeImage.style.maxWidth = '100%'; 
+            activeImage.style.height = 'auto'; // Biar proporsional tidak gepeng
+        }
+    });
+
+    // 4. Selesai menarik (Lepas Klik)
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            handleTyping(); // Otomatis simpan ukuran baru ke database & siarkan ke teman!
+        }
+    });
+}
+
+// ==========================================
+// KODE TAMBAHAN: Panggil ukuran kertas saat pertama kali aplikasi dibuka!
+// ==========================================
+applyPaperSize();
+// ==========================================
+// 13. LOGIKA MENU DROPDOWN (TITIK TIGA)
+// ==========================================
+const menuDropdownBtn = document.getElementById('menu-dropdown-btn');
+const actionMenu = document.getElementById('action-menu');
+
+if (menuDropdownBtn && actionMenu) {
+    // Buka/Tutup menu saat tombol diklik
+    menuDropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Mencegah klik bocor
+        actionMenu.style.display = actionMenu.style.display === 'flex' ? 'none' : 'flex';
+    });
+
+    // Tutup menu otomatis jika pengguna mengklik area lain di luar menu
+    document.addEventListener('click', (e) => {
+        if (!actionMenu.contains(e.target) && e.target !== menuDropdownBtn) {
+            actionMenu.style.display = 'none';
+        }
+    });
+}
